@@ -78,9 +78,9 @@ classdef VirtualPatient < matlab.mixin.Copyable
     
     methods(Abstract)
         %GETPROPERTIES  Get the patient's properties.
-        %   PROPERTIES = GETPROPERTIES() returns a struct that contains
+        %   PROP = GETPROPERTIES() returns a struct that contains
         %   fields specific to the patient implementation.
-        properties = getProperties(this);
+        prop = getProperties(this);
         
         %GETGLUCOSEMEASUREMENT  Get the patient's current glucose level.
         %   GLUCOSE = GETGLUCOSEMEASUREMENT() returns the patient's current
