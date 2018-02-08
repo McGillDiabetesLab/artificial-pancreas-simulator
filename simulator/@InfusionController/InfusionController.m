@@ -96,7 +96,7 @@ classdef InfusionController < matlab.mixin.Copyable
         %       basalGlucagon - Basal glucagon rate in ug/h (optional).
         %
         %       bolusGlucagon - Bolus glucagon in ug (optional).
-        getInfusions(this, time);
+        infusions = getInfusions(this, time);
         
         %SETINFUSIONS  Set the actual infusions administered to the patient.
         %   SETINFUSIONS(TIME, INFUSIONS) notifies the infusion controller

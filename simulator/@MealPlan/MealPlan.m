@@ -92,7 +92,7 @@ classdef MealPlan < matlab.mixin.Copyable
         %
         %       glycemicLoad - Fraction representing the glycemic load of
         %       the meal on the patient.
-        getMeal(this, time);
+        meal = getMeal(this, time);
     end
     
     methods

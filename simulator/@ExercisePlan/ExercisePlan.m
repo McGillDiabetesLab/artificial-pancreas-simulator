@@ -91,7 +91,7 @@ classdef ExercisePlan < matlab.mixin.Copyable
         %
         %       type - Type of exercise ('aerobic', 'anaerobic',
         %       'resistance').
-        getExercise(this, time);
+        exercise = getExercise(this, time);
     end
     
     methods
