@@ -67,28 +67,28 @@ primaryController = this.primaryControllers{patientIndex};
 secondaryController = this.secondaryControllers{patientIndex};
 resultsManager = this.resultsManagers{patientIndex};
 
-time = this.options.simulationStartTime: ...
-    this.options.simulationStepSize: ...
-    this.options.simulationStartTime + this.options.simulationDuration;
+time = this.options.simulationStartTime;
 
-for t = time(1:end)
-    glucoseMeasurement = patient.getGlucoseMeasurement();
-    resultsManager.addGlucoseMeasurement(t, glucoseMeasurement);
-    
-    primaryInfusions = primaryController.getInfusions(t);
-    resultsManager.addPrimaryInfusions(t, primaryInfusions);
-    primaryController.setInfusions(t, primaryInfusions);
+glucoseMeasurement = patient.getGlucoseMeasurement();
+resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
+
+while time < this.options.simulationStartTime + this.options.simulationDuration
+    primaryInfusions = primaryController.getInfusions(time);
+    resultsManager.addPrimaryInfusions(time, primaryInfusions);
+    primaryController.setInfusions(time, primaryInfusions);
     
     if ~isempty(secondaryController)
-        secondaryInfusions = secondaryController.getInfusions(t);
-        resultsManager.addSecondaryInfusions(t, secondaryInfusions);
-        secondaryController.setInfusions(t, primaryInfusions);
+        secondaryInfusions = secondaryController.getInfusions(time);
+        resultsManager.addSecondaryInfusions(time, secondaryInfusions);
+        secondaryController.setInfusions(time, primaryInfusions);
     end
     
-    patient.updateState(t, t+this.options.simulationStepSize, primaryInfusions);
-    
+    patient.updateState(time, time+this.options.simulationStepSize, primaryInfusions);
+    time = time + this.options.simulationStepSize;
     progressbar.iterate(1);
+    
+    glucoseMeasurement = patient.getGlucoseMeasurement();
+    resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
 end
 
 end
-
