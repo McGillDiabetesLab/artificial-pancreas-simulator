@@ -46,25 +46,24 @@ for i = 1:numel(this.patients)
     primaryController = this.primaryControllers{i};
     secondaryController = this.secondaryControllers{i};
     resultsManager = this.resultsManagers{i};
-    t = this.simulationTime;
+    time = this.simulationTime;
     
-    glucoseMeasurement = patient.getGlucoseMeasurement();
-    resultsManager.addGlucoseMeasurement(t, glucoseMeasurement);
-    
-    primaryInfusions = primaryController.getInfusions(t);
-    resultsManager.addPrimaryInfusions(t, primaryInfusions);
-    primaryController.setInfusions(t, primaryInfusions);
+    primaryInfusions = primaryController.getInfusions(time);
+    resultsManager.addPrimaryInfusions(time, primaryInfusions);
+    primaryController.setInfusions(time, primaryInfusions);
     
     if ~isempty(secondaryController)
-        secondaryInfusions = secondaryController.getInfusions(t);
-        resultsManager.addSecondaryInfusions(t, secondaryInfusions);
-        secondaryController.setInfusions(t, primaryInfusions);
+        secondaryInfusions = secondaryController.getInfusions(time);
+        resultsManager.addSecondaryInfusions(time, secondaryInfusions);
+        secondaryController.setInfusions(time, primaryInfusions);
     end
     
-    patient.updateState(t, t+this.options.simulationStepSize, primaryInfusions);
+    patient.updateState(time, time+this.options.simulationStepSize, primaryInfusions);
+    
+    glucoseMeasurement = patient.getGlucoseMeasurement();
+    resultsManager.addGlucoseMeasurement(time+this.options.simulationStepSize, glucoseMeasurement);
 end
 
 this.simulationTime = this.simulationTime + this.options.simulationStepSize;
 
 end
-

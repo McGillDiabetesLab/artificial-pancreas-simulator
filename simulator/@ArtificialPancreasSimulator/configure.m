@@ -173,7 +173,19 @@ end
 
 if this.options.interactiveSimulation
     this.simulationTime = this.options.simulationStartTime;
+    
+    for i = 1:numel(this.configuration.patients)
+        glucoseMeasurement = this.configuration.patients{i}.getGlucoseMeasurement();
+        this.configuration.resultsManagers{i}.addGlucoseMeasurement(this.simulationTime, glucoseMeasurement);
+    end
+    
+    if ~isempty(this.resultsManagerOptions)
+        eval([class(this.configuration.resultsManagers{1}), ...
+            '.displayResults(this.configuration.resultsManagers, this.resultsManagerOptions);']);
+    else
+        eval([class(this.configuration.resultsManagers{1}), ...
+            '.displayResults(this.configuration.resultsManagers);']);
+    end
 end
 
 end
-

@@ -9,7 +9,6 @@ if ~this.options.interactiveSimulation
     error('This method is only enabled during interactive simulation.');
 end
 
-time = this.simulationTime - this.options.simulationStepSize;
+time = this.simulationTime;
 
 end
-

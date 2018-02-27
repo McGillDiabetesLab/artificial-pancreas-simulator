@@ -108,7 +108,6 @@ simulator = ArtificialPancreasSimulator(options);
 
 if handles.InteractiveSimulationCheckbox.Value
     handles.Root.UserData.simulator = simulator;
-    simulator.stepForward();
     handles.CurrentTime.String = formatTime(simulator.getCurrentTime(), true);
     handles.StepForwardButton.Enable = 'on';
     handles.StepBackwardButton.Enable = 'on';
@@ -121,4 +120,3 @@ else
 end
 
 end
-
