@@ -60,7 +60,7 @@ classdef HovorkaPatient < VirtualPatient
             prompt = {};
             formats = {};
             
-            prompt(end+1, :) = {'Patient Name:', 'name', []};
+            prompt(end+1, :) = {'Patient name:', 'name', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'text';
             formats(end, 1).size = 200; % Automatically assign the height.
