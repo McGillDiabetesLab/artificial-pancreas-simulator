@@ -110,6 +110,7 @@ classdef HovorkaPatient < VirtualPatient
         function this = HovorkaPatient(mealPlan, exercisePlan, options)
             this@VirtualPatient(mealPlan, exercisePlan);
             
+            % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
             this.opt.patient = {'patient1'};
