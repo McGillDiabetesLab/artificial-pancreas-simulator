@@ -55,7 +55,7 @@ classdef HovorkaPatient < VirtualPatient
                 lastOptions.useTreatments = true;
             end
             
-            dlgTitle = 'Configure Hovorka patient';
+            dlgTitle = 'Configure Hovorka Patient';
             
             prompt = {};
             formats = {};
