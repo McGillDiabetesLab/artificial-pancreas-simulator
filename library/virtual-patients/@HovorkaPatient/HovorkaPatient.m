@@ -368,14 +368,14 @@ classdef HovorkaPatient < VirtualPatient
             initialState(this.eInsSub2) = initialState(this.eInsSub1);
             
             % Set patient basal insulin rates.
-            this.param.pumpBasalRates.value = round(2*Ub, 1) / 2;
-            this.param.pumpBasalRates.time = 0;
+            this.param.pumpBasals.value = round(2*Ub, 1) / 2;
+            this.param.pumpBasals.time = 0;
             
             this.param.TDD = Ub * 24 / 0.47;
             
             % Compute an approximation of patient carb factor.
-            this.param.carbsFactorRatios.value = round(2*(this.param.MCHO * (0.4 * this.param.St + 0.6 * this.param.Sd) * Gs0 * this.param.Vg)/(this.param.ke * this.param.Vi)) / 2; % g/U.
-            this.param.carbsFactorRatios.time = 0;
+            this.param.carbFactors.value = round(2*(this.param.MCHO * (0.4 * this.param.St + 0.6 * this.param.Sd) * Gs0 * this.param.Vg)/(this.param.ke * this.param.Vi)) / 2; % g/U.
+            this.param.carbFactors.time = 0;
             
             initialState = initialState(:);
         end
