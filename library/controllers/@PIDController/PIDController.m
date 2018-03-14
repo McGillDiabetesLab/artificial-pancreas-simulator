@@ -121,9 +121,9 @@ classdef PIDController < InfusionController
                     % For more details, see
                     % https://en.wikipedia.org/wiki/Infinite_impulse_response.
                     if all(~isnan(this.glucoseHistory(:, end-1:end)))
-                        alpha = 0.5;
-                        filteredGlucose = ((1 - alpha)^2) * glucose + alpha * ...
-                            (this.glucoseHistory(:, end) + (1 - alpha) * this.glucoseHistory(:, end-1));
+                        alph = 0.5;
+                        filteredGlucose = ((1 - alph)^2) * glucose + alph * ...
+                            (this.glucoseHistory(:, end) + (1 - alph) * this.glucoseHistory(:, end-1));
                     end
                 end
                 
