@@ -72,7 +72,7 @@ classdef VirtualPatient < matlab.mixin.Copyable
             if ~exist('lastOptions', 'var')
                 lastOptions = struct('name', className);
             end
-            options = configureName(lastOptions);
+            options = configureName(className, lastOptions);
         end
     end
     
