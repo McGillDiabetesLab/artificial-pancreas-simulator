@@ -1,6 +1,10 @@
 classdef PIDController < InfusionController
     %PIDCONTROLLER  Proportional-Integral-Derivative controller.
-    %   For more details, see https://en.wikipedia.org/wiki/PID_controller.
+    %   For more details, see
+    %   * https://en.wikipedia.org/wiki/PID_controller.
+    %   * Astrom, Karl Johan, and Richard M. Murray. Feedback systems: an
+    %   introduction for scientists and engineers. Princeton university
+    %   press, 2010. Chapter 10.
     
     properties(GetAccess = public, SetAccess = immutable)
         glucoseHistorySize = 10;
@@ -10,7 +14,8 @@ classdef PIDController < InfusionController
         opt; % Options configured by the user.
         
         glucoseHistory;
-        totalGlucoseError;
+        lastIntegralCoeff;
+        lastDerivativeCoeff;
     end
     
     methods(Static)
@@ -18,11 +23,11 @@ classdef PIDController < InfusionController
             if ~exist('lastOptions', 'var')
                 lastOptions = struct();
                 lastOptions.name = className;
-                lastOptions.glucoseTarget = 5.5; % mmol/L.
-                lastOptions.kP = 1e-2;
-                lastOptions.kI = 1e-5;
-                lastOptions.kD = 1e1;
-                lastOptions.filterNoise = true;
+                lastOptions.glucoseTarget = 7.0; % mmol/L.
+                lastOptions.kP = 2e-2;
+                lastOptions.kI = 5e-5;
+                lastOptions.kD = 5;
+                lastOptions.nD = 5e-2;
             end
             
             dlgTitle = 'Configure PID Controller';
@@ -40,23 +45,25 @@ classdef PIDController < InfusionController
             formats(end, 1).format = 'float';
             formats(end, 1).size = 50;
             
-            prompt(end+1, :) = {'Proportional:', 'kP', []};
+            prompt(end+1, :) = {'      Proportional:', 'kP', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'float';
             formats(end, 1).size = 100;
             
-            prompt(end+1, :) = {'       Integral:', 'kI', []};
+            prompt(end+1, :) = {'             Integral:', 'kI', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'float';
             formats(end, 1).size = 100;
             
-            prompt(end+1, :) = {'   Derivative:', 'kD', []};
+            prompt(end+1, :) = {'         Derivative:', 'kD', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'float';
             formats(end, 1).size = 100;
             
-            prompt(end+1, :) = {'Filter sensor noise.', 'filterNoise', []};
-            formats(end+1, 1).type = 'check';
+            prompt(end+1, :) = {'Filter coefficient:', 'nD', '(inf for no filtering)'};
+            formats(end+1, 1).type = 'edit';
+            formats(end, 1).format = 'float';
+            formats(end, 1).size = 100;
             
             [answer, cancelled] = inputsdlg(prompt, dlgTitle, formats, lastOptions);
             
@@ -74,11 +81,11 @@ classdef PIDController < InfusionController
             % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
-            this.opt.glucoseTarget = 5.5; % mmol/L.
-            this.opt.kP = 1e-2;
-            this.opt.kI = 1e-5;
-            this.opt.kD = 1e1;
-            this.opt.filterNoise = true;
+            this.opt.glucoseTarget = 7.0; % mmol/L.
+            this.opt.kP = 2e-2;
+            this.opt.kI = 5e-5;
+            this.opt.kD = 5;
+            this.opt.nD = 5e-2;
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -93,11 +100,15 @@ classdef PIDController < InfusionController
             
             % Initialize state.
             this.glucoseHistory = nan(1, this.glucoseHistorySize);
-            this.totalGlucoseError = 0.0;
+            this.lastIntegralCoeff = 0.0;
+            this.lastDerivativeCoeff = 0.0;
         end
         
         function infusions = getInfusions(this, time)
             glucose = this.patient.getGlucoseMeasurement();
+            this.glucoseHistory(:, 1:end-1) = this.glucoseHistory(:, 2:end);
+            this.glucoseHistory(:, end) = glucose;
+            
             prop = this.patient.getProperties();
             
             % Get basal.
@@ -113,40 +124,24 @@ classdef PIDController < InfusionController
             end
             
             if ~isnan(glucose)
-                filteredGlucose = glucose;
-                if this.opt.filterNoise
-                    % We use an IIR filter with the transfer function
-                    % H(z) = (1-alpha)^2 / (1 - alpha z^(-1) - alpha (1 - alpha) z^(-2))
-                    % where alpha is a tuning parameter.
-                    % For more details, see
-                    % https://en.wikipedia.org/wiki/Infinite_impulse_response.
-                    if all(~isnan(this.glucoseHistory(:, end-1:end)))
-                        alph = 0.5;
-                        filteredGlucose = ((1 - alph)^2) * glucose + alph * ...
-                            (this.glucoseHistory(:, end) + (1 - alph) * this.glucoseHistory(:, end-1));
-                    end
-                end
-                
-                % For the glucose derivative (rate of change), we use the
-                % second order backward finite difference.
-                % For more details, see
-                % https://en.wikipedia.org/wiki/Finite_difference_coefficient.
-                if all(~isnan(this.glucoseHistory(:, end-1:end)))
-                    dGlucose = (3 * filteredGlucose - 4 * this.glucoseHistory(:, end) + ...
-                        this.glucoseHistory(:, end-1)) / (2 * this.simulationStepSize);
+                proportionalCoeff = this.opt.kP * (glucose - this.opt.glucoseTarget);
+                integralCoeff = this.lastIntegralCoeff;
+                this.lastIntegralCoeff = this.lastIntegralCoeff + this.opt.kI * this.simulationStepSize * (glucose - this.opt.glucoseTarget);
+                if ~isnan(this.glucoseHistory(:, end-1))
+                    derivativeCoeff = (1 / (1 + this.simulationStepSize * this.opt.nD)) * this.lastDerivativeCoeff + ...
+                        (this.opt.kD / this.simulationStepSize / (1 + 1 / (this.opt.nD * this.simulationStepSize))) * (glucose - this.glucoseHistory(:, end-1));
                 else
-                    dGlucose = 0;
+                    derivativeCoeff = 0;
                 end
+                this.lastDerivativeCoeff = derivativeCoeff;
+                Upid = proportionalCoeff + integralCoeff + derivativeCoeff;
                 
-                Upid = (filteredGlucose - this.opt.glucoseTarget) * this.opt.kP + ...
-                    dGlucose * this.opt.kD + ...
-                    this.totalGlucoseError * this.opt.kI;
-                Upid = max(min(Upid, 2*Ub), -Ub);
-                
-                infusions.basalInsulin = Ub + Upid;
-                
-                this.totalGlucoseError = this.totalGlucoseError + (filteredGlucose - this.opt.glucoseTarget);
+                Upid = max(min(Upid, 5.0*Ub), -Ub);
+            else
+                Upid = 0.0;
             end
+            
+            infusions.basalInsulin = Ub + Upid;
             
             % Get bolus.
             meal = this.patient.getMeal(time);
@@ -165,10 +160,6 @@ classdef PIDController < InfusionController
             else
                 infusions.bolusInsulin = 0;
             end
-            
-            % Update state.
-            this.glucoseHistory(:, 1:end-1) = this.glucoseHistory(:, 2:end);
-            this.glucoseHistory(:, end) = filteredGlucose;
         end
         
         function setInfusions(this, time, infusions)
