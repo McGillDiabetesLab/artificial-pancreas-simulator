@@ -6,9 +6,10 @@ classdef EmptyMealPlan < MealPlan
         end
         
         function meal = getMeal(this, time)
-            meal.value = zeros(size(time));
-            meal.glycemicLoad = zeros(size(time));
-            meal.announced = ones(size(time));
+            % Use sparse matrices for efficient storage.
+            meal.value = zeros(length(time), 1);
+            meal.glycemicLoad = zeros(length(time), 1);
+            meal.announced = ones(length(time), 1);
         end
     end
     
