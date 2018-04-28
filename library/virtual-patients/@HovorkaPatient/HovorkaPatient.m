@@ -14,6 +14,18 @@ classdef HovorkaPatient < VirtualPatient
     properties(GetAccess = public, SetAccess = immutable)
         stateHistorySize = 1000;
         
+        % state names
+        stateName = { ...
+            'I_{s1} (U)', ...
+            'I_{s2} (U)', ...
+            'I_p (mU/L)', ...
+            'X_T (1/min)', ...
+            'X_D (1/min)', ...
+            'X_E (~)', ...
+            'G_p (umol/kg)', ...
+            'G_T (umol/kg)', ...
+            'G_s (mmol/L)'};
+        
         % State enumeration.
         eInsSub1 = 1;
         eInsSub2 = 2;
@@ -26,7 +38,7 @@ classdef HovorkaPatient < VirtualPatient
         eGluMeas = 9;
     end
     
-    properties(GetAccess = public, SetAccess = private)
+    properties(GetAccess = public, SetAccess = protected)
         opt; % Options configured by the user.
         param; % Parameters configured by the specific patient model (patient0, patient1, ...).
         
@@ -134,7 +146,7 @@ classdef HovorkaPatient < VirtualPatient
             
             % Initialize state.
             this.state = this.getInitialState();
-            this.stateHistory = zeros(length(this.state), this.stateHistorySize);
+            this.stateHistory = nan(length(this.state), this.stateHistorySize);
             this.stateHistory(:, end) = this.state;
             
             % Initialize sensor model.
@@ -305,7 +317,7 @@ classdef HovorkaPatient < VirtualPatient
         
         function initialState = getInitialState(this)
             % Glucose measurement (mmol/L).
-            Gs0 = 5.5;
+            Gs0 = 7.0;
             if this.opt.randomInitialConditions > 0
                 Gs0 = normrnd(7, 3.5);
                 while Gs0 < 5 || Gs0 > 8
@@ -371,7 +383,7 @@ classdef HovorkaPatient < VirtualPatient
             this.param.pumpBasals.value = round(2*Ub, 1) / 2;
             this.param.pumpBasals.time = 0;
             
-            this.param.TDD = Ub * 24 / 0.47;
+            this.param.TDD = round(Ub * 24 / 0.47, 2);
             
             % Compute an approximation of patient carb factor.
             this.param.carbFactors.value = round(2*(this.param.MCHO * (0.4 * this.param.St + 0.6 * this.param.Sd) * Gs0 * this.param.Vg)/(this.param.ke * this.param.Vi)) / 2; % g/U.
