@@ -21,6 +21,7 @@ classdef BasalBolusTherapy < InfusionController
             if ~exist('lastOptions', 'var')
                 lastOptions = struct();
                 lastOptions.name = className;
+                lastOptions.mealBolus = true;
                 lastOptions.correctionBolus = false;
                 lastOptions.dGlucoseHyperBolusThresh = 0.05;
                 lastOptions.hypoPumpShutoff = false;
@@ -44,6 +45,10 @@ classdef BasalBolusTherapy < InfusionController
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'text';
             formats(end, 1).size = 200;
+            
+            prompt(end+1, :) = {'Provide Meal boluses.', 'mealBolus', []};
+            formats(end+1, 1).type = 'check';
+            formats(end, 1).size = 140;
             
             prompt(end+1, :) = {'Provide correction boluses...', 'correctionBolus', []};
             formats(end+1, 1).type = 'check';
@@ -91,6 +96,7 @@ classdef BasalBolusTherapy < InfusionController
             % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
+            this.opt.mealBolus = true;
             this.opt.correctionBolus = false;
             this.opt.dGlucoseHyperBolusThresh = 0.05;
             this.opt.hypoPumpShutoff = false;
@@ -137,21 +143,22 @@ classdef BasalBolusTherapy < InfusionController
             infusions.basalInsulin = Ub;
             
             % Get bolus.
-            meal = this.patient.getMeal(time);
-            if meal.value > 0
-                if isfield(prop, 'carbFactors')
-                    idx = find(prop.carbFactors.time <= mod(time, 24*60), 1, 'last');
-                    if ~isempty(idx)
-                        carbFactor = prop.carbFactors.value(idx);
+            infusions.bolusInsulin = 0;
+            if this.opt.mealBolus
+                meal = this.patient.getMeal(time);
+                if meal.value > 0
+                    if isfield(prop, 'carbFactors')
+                        idx = find(prop.carbFactors.time <= mod(time, 24*60), 1, 'last');
+                        if ~isempty(idx)
+                            carbFactor = prop.carbFactors.value(idx);
+                        else
+                            carbFactor = prop.carbFactors.value(end);
+                        end
                     else
-                        carbFactor = prop.carbFactors.value(end);
+                        carbFactor = 12;
                     end
-                else
-                    carbFactor = 12;
+                    infusions.bolusInsulin = round(meal.value/carbFactor, 1);
                 end
-                infusions.bolusInsulin = round(meal.value/carbFactor, 1);
-            else
-                infusions.bolusInsulin = 0;
             end
             
             % Correct basal and bolus if options are set.
@@ -200,11 +207,12 @@ classdef BasalBolusTherapy < InfusionController
                 end
                 
                 if this.opt.correctionBolus
-                    if time - this.lastBolusTime > 2.5 * 60 % Last bolus has been provided some time ago.
+                    if meal.value > 0 || ... % At meal time
+                            time - this.lastBolusTime > 2.5 * 60% Last bolus has been provided some time ago.
                         bolusCorrectionConditions = ...
-                            (filteredGlucose > 10 && mean(this.dGlucoseHistory(end-2:end)) > abs(this.opt.dGlucoseHyperBolusThresh)) || ...
-                            (filteredGlucose > 12 && mean(this.dGlucoseHistory(end-1:end)) > 0.5 * abs(this.opt.dGlucoseHyperBolusThresh)) || ...
-                            (filteredGlucose > 14 && this.dGlucoseHistory(end) > 0);
+                            (filteredGlucose > 9 && mean(this.dGlucoseHistory(end-2:end)) > abs(this.opt.dGlucoseHyperBolusThresh)) || ...
+                            (filteredGlucose > 11 && mean(this.dGlucoseHistory(end-1:end)) > 0.5 * abs(this.opt.dGlucoseHyperBolusThresh)) || ...
+                            (filteredGlucose > 13 && this.dGlucoseHistory(end) > -1e-8);
                         if bolusCorrectionConditions
                             corrBolus = 0;
                             if isfield(prop, 'TDD')
