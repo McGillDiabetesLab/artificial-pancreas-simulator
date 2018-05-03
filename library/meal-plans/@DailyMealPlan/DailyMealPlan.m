@@ -115,12 +115,14 @@ classdef DailyMealPlan < MealPlan
                 this.meals.announced(index) = meals(i).announcedFraction > rand(1);
                 
                 if meals(i).repeat
-                    index = index + 24 * 60 / simulationStepSize;
+                    day = 1;
+                    index = round((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     while index <= numSteps
                         this.meals.values(index) = meals(i).value;
                         this.meals.glycemicLoads(index) = meals(i).glycemicLoad;
                         this.meals.announced(index) = meals(i).announcedFraction > rand(1);
-                        index = index + 24 * 60 / simulationStepSize;
+                        day = day + 1;
+                        index = round((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     end
                 end
             end
