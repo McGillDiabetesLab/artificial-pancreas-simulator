@@ -34,9 +34,9 @@ this.param.Bio = 1; % Bioavailability of CHO (%).
 this.param.TauM = 40; % Time-to-maximum of CHO absorption (min).
 
 % Glucagon submodel.
-this.param.TauGlu = 19; % Time-to-maximum of glucagon absorption (min).
-this.param.TGlu = 0.0012; % Glucagon sensitivity (mL/pg).
-this.param.MCRGlu = 0.012; % Metabolic clearance rate of glucagon (L/kg/min).
+this.param.TauGlu = 19 * (1 + 0.05 * randn(1)); % Time-to-maximum of glucagon absorption (min).
+this.param.TGlu = 0.0012 * (1 + 0.05 * randn(1)); % Glucagon sensitivity (mL/pg).
+this.param.MCRGlu = 0.012 * (1 + 0.05 * randn(1)); % Metabolic clearance rate of glucagon (L/kg/min).
 
 % Sensor submodel.
 this.param.TauS = 15; % Time constant between interstitial and plasma glucose compartment (min).
@@ -47,4 +47,3 @@ this.param.Vg = 160; % Glucose distribution volume (mL/kg).
 this.param.MCHO = 180.1577; % Molecular wight of glucose (g/mol).
 
 end
-
