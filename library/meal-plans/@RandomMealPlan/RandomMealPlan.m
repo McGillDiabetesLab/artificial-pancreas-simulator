@@ -113,6 +113,10 @@ classdef RandomMealPlan < MealPlan
                 bedtimeSnack = false;
             end
             
+            if exist('options', 'var') && isfield(options, 'rng_seed') && options.rng_seed > 0
+                rng(options.rng_seed);
+            end
+            
             % Compute number of steps.
             numDays = ceil((simulationStartTime + simulationDuration)/(24 * 60)) + 1;
             numSteps = ceil(numDays*24*60/simulationStepSize);
