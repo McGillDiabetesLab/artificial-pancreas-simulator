@@ -113,8 +113,8 @@ classdef RandomMealPlan < MealPlan
                 bedtimeSnack = false;
             end
             
-            if exist('options', 'var') && isfield(options, 'rng_seed') && options.rng_seed > 0
-                rng(options.rng_seed);
+            if exist('options', 'var') && isfield(options, 'RNGSeed') && options.RNGSeed > 0
+                rng(options.RNGSeed);
             end
             
             % Compute number of steps.
