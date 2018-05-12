@@ -23,6 +23,7 @@ classdef BasalBolusTherapy < InfusionController
                 lastOptions.name = className;
                 lastOptions.mealBolus = true;
                 lastOptions.correctionBolus = false;
+                lastOptions.useMeanBasal = false;
                 lastOptions.dGlucoseHyperBolusThresh = 0.05;
                 lastOptions.hypoPumpShutoff = false;
                 lastOptions.dGlucosePumpShutoffThresh = 0.03;
@@ -47,6 +48,10 @@ classdef BasalBolusTherapy < InfusionController
             formats(end, 1).size = 200;
             
             prompt(end+1, :) = {'Provide Meal boluses.', 'mealBolus', []};
+            formats(end+1, 1).type = 'check';
+            formats(end, 1).size = 140;
+            
+            prompt(end+1, :) = {'Use mean insulin basal value.', 'useMeanBasal', []};
             formats(end+1, 1).type = 'check';
             formats(end, 1).size = 140;
             
@@ -98,6 +103,7 @@ classdef BasalBolusTherapy < InfusionController
             this.opt.name = this.name;
             this.opt.mealBolus = true;
             this.opt.correctionBolus = false;
+            this.opt.useMeanBasal = false;
             this.opt.dGlucoseHyperBolusThresh = 0.05;
             this.opt.hypoPumpShutoff = false;
             this.opt.dGlucosePumpShutoffThresh = 0.03;
@@ -128,14 +134,19 @@ classdef BasalBolusTherapy < InfusionController
             this.glucoseHistory(:, end) = glucose;
             
             prop = this.patient.getProperties();
+            pump_basals = prop.pumpBasals.value;
+            
+            if this.opt.useMeanBasal
+                pump_basals = mean(pump_basals) * ones(size(pump_basals));
+            end
             
             % Get basal.
             if isfield(prop, 'pumpBasals')
                 idx = find(prop.pumpBasals.time <= mod(time, 24*60), 1, 'last');
                 if ~isempty(idx)
-                    Ub = prop.pumpBasals.value(idx);
+                    Ub = pump_basals(idx);
                 else
-                    Ub = prop.pumpBasals.value(end);
+                    Ub = pump_basals(end);
                 end
             else % Use a default basal.
                 Ub = 1.0; % U/h.
@@ -213,10 +224,10 @@ classdef BasalBolusTherapy < InfusionController
                             (filteredGlucose > 9 && mean(this.dGlucoseHistory(end-2:end)) > abs(this.opt.dGlucoseHyperBolusThresh)) || ...
                             (filteredGlucose > 11 && mean(this.dGlucoseHistory(end-1:end)) > 0.5 * abs(this.opt.dGlucoseHyperBolusThresh)) || ...
                             (filteredGlucose > 13 && this.dGlucoseHistory(end) > -1e-8);
-                        if bolusCorrectionConditions
+                        if meal.value > 0 || bolusCorrectionConditions
                             corrBolus = 0;
                             if isfield(prop, 'TDD')
-                                corrBolus = round(2*(filteredGlucose - 7.0)/(100 / prop.TDD), 1) / 2;
+                                corrBolus = round(2*(filteredGlucose - 7.0)/(110 / prop.TDD), 1) / 2;
                             end
                             if isfield(prop, 'carbFactors')
                                 idx = find(prop.carbFactors.time <= mod(time, 24*60), 1, 'last');
@@ -225,7 +236,7 @@ classdef BasalBolusTherapy < InfusionController
                                 else
                                     carbFactor = prop.carbFactors.value(end);
                                 end
-                                corrBolus = min(corrBolus, round(2*40/carbFactor)/2);
+                                corrBolus = min(corrBolus, round(2*30/carbFactor)/2);
                             end
                             if corrBolus >= 1.0
                                 infusions.bolusInsulin = infusions.bolusInsulin + corrBolus;
