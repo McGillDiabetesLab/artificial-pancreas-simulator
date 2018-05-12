@@ -40,4 +40,3 @@ this.param.Vg = 160; % Glucose distribution volume (mL/kg).
 this.param.MCHO = 180.1577; % Molecular wight of glucose (g/mol).
 
 end
-

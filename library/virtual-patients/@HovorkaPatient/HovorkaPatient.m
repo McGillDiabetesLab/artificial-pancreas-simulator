@@ -13,7 +13,7 @@ classdef HovorkaPatient < VirtualPatient
     
     properties(GetAccess = public, SetAccess = immutable)
         stateHistorySize = 1000;
-                
+        
         % State enumeration.
         eInsSub1 = 1;
         eInsSub2 = 2;
