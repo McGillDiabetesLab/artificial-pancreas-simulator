@@ -49,6 +49,7 @@ classdef HovorkaPatient < VirtualPatient
         glucagon;
         CGM; % Recalibrated and synchronized sensor error.
         variability; % Intra-patient variability.
+        pumpParamError;
         
         lastTreatmentTime = 0;
         firstIteration = true;
@@ -131,6 +132,8 @@ classdef HovorkaPatient < VirtualPatient
             this.opt.mealVariability = false;
             this.opt.randomInitialConditions = true;
             this.opt.useTreatments = true;
+            this.opt.randomPumpParam = false;
+            this.opt.RNGSeed = -1;
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -141,8 +144,18 @@ classdef HovorkaPatient < VirtualPatient
                 end
             end
             
+            if this.opt.RNGSeed > 0
+                rng(this.opt.RNGSeed);
+            end
+            
             this.name = this.opt.name;
             eval(['this.', options.patient{1}]);
+            
+            % generate pump parameter error if needed
+            if this.opt.randomPumpParam
+                this.pumpParamError.basal = 0.5 * 2 * (rand(1) - 0.5);
+                this.pumpParamError.bolus = 0.5 * 2 * (rand(1) - 0.5);
+            end
             
             % Initialize state.
             this.state = this.getInitialState();
@@ -180,6 +193,12 @@ classdef HovorkaPatient < VirtualPatient
         
         function prop = getProperties(this)
             prop = this.param;
+            
+            if this.opt.randomPumpParam
+                prop.TDD = (1 + this.pumpParamError.basal) * prop.TDD;
+                prop.pumpBasals.value = round(2*(1 + this.pumpParamError.basal).*prop.pumpBasals.value, 1) / 2;
+                prop.carbFactors.value = round(2*(1 + this.pumpParamError.bolus).*prop.carbFactors.value) / 2;
+            end
         end
         
         function glucose = getGlucoseMeasurement(this)
@@ -193,6 +212,11 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function updateState(this, startTime, endTime, infusions)
+            % Reset random number generator
+            if this.opt.RNGSeed > 0
+                rng(mod(startTime*this.opt.RNGSeed, 999983));
+            end
+            
             % Get infusions.
             Ubasal = max(infusions.basalInsulin, 0);
             Ubolus = max(infusions.bolusInsulin, 0);
@@ -205,29 +229,29 @@ classdef HovorkaPatient < VirtualPatient
                 % Add intra-variability.
                 if this.opt.intraVariability > 0
                     % Reset intra-patient variability.
-                    this.variability.EGP0.phase = 3 * 60 * rand(1);
-                    this.variability.F01.phase = 3 * 60 * rand(1);
-                    this.variability.k12.phase = 3 * 60 * rand(1);
-                    this.variability.ka1.phase = 3 * 60 * rand(1);
-                    this.variability.ka2.phase = 3 * 60 * rand(1);
-                    this.variability.ka3.phase = 3 * 60 * rand(1);
-                    this.variability.St.phase = 3 * 60 * rand(1);
-                    this.variability.Sd.phase = 3 * 60 * rand(1);
-                    this.variability.Se.phase = 3 * 60 * rand(1);
-                    this.variability.ka.phase = 3 * 60 * rand(1);
-                    this.variability.ke.phase = 3 * 60 * rand(1);
+                    this.variability.EGP0.phase = 4 * 60 * rand(1);
+                    this.variability.F01.phase = 4 * 60 * rand(1);
+                    this.variability.k12.phase = 4 * 60 * rand(1);
+                    this.variability.ka1.phase = 4 * 60 * rand(1);
+                    this.variability.ka2.phase = 4 * 60 * rand(1);
+                    this.variability.ka3.phase = 4 * 60 * rand(1);
+                    this.variability.St.phase = 4 * 60 * rand(1);
+                    this.variability.Sd.phase = 4 * 60 * rand(1);
+                    this.variability.Se.phase = 4 * 60 * rand(1);
+                    this.variability.ka.phase = 4 * 60 * rand(1);
+                    this.variability.ke.phase = 4 * 60 * rand(1);
                     
-                    this.variability.EGP0.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.F01.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.k12.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka1.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka2.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka3.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.St.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.Sd.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.Se.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ke.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.EGP0.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.F01.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.k12.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.ka1.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.ka2.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.ka3.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.St.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.Sd.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.Se.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.ka.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
+                    this.variability.ke.period = 4 * 60 + 2 * 60 * (rand(1) - 0.5);
                 end
                 
                 this.firstIteration = false;
@@ -320,7 +344,7 @@ classdef HovorkaPatient < VirtualPatient
             Gs0 = 7.0;
             if this.opt.randomInitialConditions > 0
                 Gs0 = normrnd(7, 3.5);
-                while Gs0 < 5 || Gs0 > 8
+                while Gs0 < 5 || Gs0 > 9
                     Gs0 = normrnd(7, 3.5);
                 end
             end
@@ -383,7 +407,7 @@ classdef HovorkaPatient < VirtualPatient
             this.param.pumpBasals.value = round(2*Ub, 1) / 2;
             this.param.pumpBasals.time = 0;
             
-            this.param.TDD = round(Ub * 24 / 0.47, 2);
+            this.param.TDD = round(Ub*24/0.47, 2);
             
             % Compute an approximation of patient carb factor.
             this.param.carbFactors.value = round(2*(this.param.MCHO * (0.4 * this.param.St + 0.6 * this.param.Sd) * Gs0 * this.param.Vg)/(this.param.ke * this.param.Vi)) / 2; % g/U.
