@@ -57,7 +57,7 @@ classdef ArtificialPancreasSimulator < handle
         end
         
         % Standard simulation.
-        simulate(this);
+        simulate(this, patientIndex);
         
         % Interactive simulation.
         time = getCurrentTime(this);
@@ -84,7 +84,7 @@ classdef ArtificialPancreasSimulator < handle
     
     methods(Access = private)
         configure(this);
-        reset(this);
+        reset(this, patientIndex);
         
         % Interactive simulation.
         simulateForward(this);

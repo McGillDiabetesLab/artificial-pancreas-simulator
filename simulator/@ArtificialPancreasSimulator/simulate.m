@@ -1,29 +1,36 @@
-function simulate(this)
+function simulate(this, patientIndexes)
 %SIMULATE  Simulate a virtual population of type 1 diabetes patients.
 %   SIMULATE() performs a fresh simulation of the virtual population
 %   defined by the simulator configuration and displays the results to the
 %   user using the specified results manager. The results can also be
 %   accessed through the simulator's read-only public properties.
+%
+%   patientIndex: optional input to specify index of patient to run.
+%
 
 if this.options.interactiveSimulation
     error('This method is disabled during interactive simulation.');
 end
 
+if nargin < 2
+   patientIndexes = 1:numel(this.patients);
+end
+
 if ~this.firstSimulation
-    this.reset();
+    this.reset(patientIndexes);
 end
 this.firstSimulation = false;
 
-patients = {};
-primaryControllers = {};
-secondaryControllers = {};
-resultsManagers = {};
+patients = this.patients;
+primaryControllers = this.primaryControllers;
+secondaryControllers = this.secondaryControllers;
+resultsManagers = this.resultsManagers;
 
 stepsPerPatient = this.options.simulationDuration ./ this.options.simulationStepSize;
-totalSteps = numel(this.patients) .* stepsPerPatient;
 
-if this.options.parallelExecution
+if nargin < 2 && this.options.parallelExecution
     packetSize = 32;
+    totalSteps = numel(this.patients) .* stepsPerPatient;
     progressbar = parfor_progressbar(totalSteps, 'Simulation in progress...');
     for parallelIndex = 1:ceil(numel(this.patients)./packetSize)
         startIndex = (parallelIndex - 1) .* packetSize + 1;
@@ -35,8 +42,9 @@ if this.options.parallelExecution
     end
     progressbar.close();
 else
+    totalSteps = numel(patientIndexes) .* stepsPerPatient;
     progressbar = for_progressbar(totalSteps, 'Simulation in progress...');
-    for i = 1:numel(this.patients)
+    for i = patientIndexes(:)'
         [patients{i}, primaryControllers{i}, secondaryControllers{i}, resultsManagers{i}] = ...
             simulatePatient(this, progressbar, i);
     end

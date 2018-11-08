@@ -1,12 +1,11 @@
-function reset(this)
+function reset(this, patientIndexes)
 %RESET  Reset the simulator properties to the initial configuration.
 
-this.patients = {};
-this.primaryControllers = {};
-this.secondaryControllers = {};
-this.resultsManagers = {};
-
-for i = 1:numel(this.configuration.patients)
+if nargin < 2
+    patientIndexes = 1:numel(this.configuration.patients);
+end
+    
+for i = patientIndexes(:)'
     this.patients{i} = copy(this.configuration.patients{i});
     
     this.primaryControllers{i} = copy(this.configuration.primaryControllers{i});
