@@ -179,6 +179,7 @@ classdef BasalBolusTherapy < InfusionController
             this.opt.insulinDuration = 3 * 60;
             this.opt.insulinPeakTime = 75;
             this.opt.useMeanBasal = false;
+            this.opt.useMeanCarbF = false;
             this.opt.mealBolus = true;
             this.opt.hypoPumpShutoff = false;
             this.opt.dGlucosePumpShutoffThresh = 0.05;
@@ -337,10 +338,19 @@ classdef BasalBolusTherapy < InfusionController
                         carbFactor = 12;
                     end
                     
-                    infusions.bolusInsulin = round(2*( ...
-                        meal.value / carbFactor + ...
-                        (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity - ...
-                        insulinOnBoard), 1) / 2;
+                    if this.opt.useMeanCarbF
+                        carbFactor = mean(prop.carbFactors.value);
+                    end
+                    
+                    if this.opt.correctionBolus
+                        infusions.bolusInsulin = round(2*( ...
+                            meal.value / carbFactor + ...
+                            (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity - ...
+                            insulinOnBoard), 1) / 2;
+                    else
+                        infusions.bolusInsulin = round(2*( ...
+                            meal.value / carbFactor), 1) / 2;
+                    end
                     
                     if infusions.bolusInsulin < 0
                         infusions.bolusInsulin = 0.0;
@@ -350,7 +360,7 @@ classdef BasalBolusTherapy < InfusionController
             
             % Calculate correction bolus in case no meal bolus is given.
             if this.opt.correctionBolus
-                if meal.value == 0 && ...
+                if (~this.opt.mealBolus || meal.value == 0) && ...
                         time - this.lastBolusTime > 1.5 * 60
                     bolusCorrectionConditions = false;
                     for k = 1:length(this.opt.corrBolusRules)
