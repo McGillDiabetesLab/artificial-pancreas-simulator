@@ -6,32 +6,60 @@ classdef RandomMealPlan < MealPlan
     
     methods(Static)
         function options = configure(className, lastOptions)
-            mealNames = {'breakfast', 'lunch', 'dinner'};
+            mealNames = {'breakfast', 'snackMorning', 'lunch', 'snackAfternoon', 'dinner', 'snackNight'};
             
             defaultAns = struct();
-            defaultAns.plan = cell(3, 5);
+            defaultAns.plan = cell(6, 7);
             if ~exist('lastOptions', 'var')
                 defaultAns.name = className;
-                defaultAns.plan(1, :) = {formatTime(7*60, false), formatTime(9*60, false), ...
-                    '40', '60', '100'};
-                defaultAns.plan(2, :) = {formatTime(12*60, false), formatTime(13*60, false), ...
-                    '60', '100', '100'};
-                defaultAns.plan(3, :) = {formatTime(17*60, false), formatTime(21*60, false), ...
-                    '20', '80', '100'};
-                defaultAns.afternoonSnack = true;
-                defaultAns.bedtimeSnack = false;
+                defaultAns.plan(1, :) = {true, formatTime(7*60, false), formatTime(9*60, false), '40', '60', '1', '100'};
+                defaultAns.plan(2, :) = {false, '', '', '', '', '', ''};
+                defaultAns.plan(3, :) = {true, formatTime(12*60, false), formatTime(13*60, false), '60', '100', '1', '100'};
+                defaultAns.plan(4, :) = {false, '', '', '', '', '', ''};
+                defaultAns.plan(5, :) = {true, formatTime(17*60, false), formatTime(21*60, false), '20', '80', '1', '100'};
+                defaultAns.plan(6, :) = {false, '', '', '', '', '', ''};
             else
                 defaultAns.name = lastOptions.name;
                 for mnIdx = 1:numel(mealNames)
-                    defaultAns.plan(mnIdx, :) = { ...
-                        formatTime(lastOptions.plan.(mealNames{mnIdx}).time(1), false), ...
-                        formatTime(lastOptions.plan.(mealNames{mnIdx}).time(end), false), ...
-                        num2str(lastOptions.plan.(mealNames{mnIdx}).value(1)), ...
-                        num2str(lastOptions.plan.(mealNames{mnIdx}).value(end)), ...
-                        num2str(100*lastOptions.plan.(mealNames{mnIdx}).announcedFraction)};
+                    if lastOptions.plan.(mealNames{mnIdx}).enabled
+                        defaultAns.plan(mnIdx, :) = { ...
+                            true, ...
+                            formatTime(lastOptions.plan.(mealNames{mnIdx}).time(1), false), ...
+                            formatTime(lastOptions.plan.(mealNames{mnIdx}).time(end), false), ...
+                            num2str(lastOptions.plan.(mealNames{mnIdx}).value(1)), ...
+                            num2str(lastOptions.plan.(mealNames{mnIdx}).value(end)), ...
+                            num2str(lastOptions.plan.(mealNames{mnIdx}).glycemicLoad), ...
+                            num2str(100*lastOptions.plan.(mealNames{mnIdx}).announcedFraction)};
+                    else
+                        defaultAns.plan(mnIdx, :) = {false, '', '', '', '', '', ''};
+                    end
                 end
-                defaultAns.afternoonSnack = lastOptions.afternoonSnack;
-                defaultAns.bedtimeSnack = lastOptions.bedtimeSnack;
+            end
+            
+            colorText = @(color, text) ['<html><table border=0 width=400 bgcolor=', color, '><TR><TD>', text, '</TD></TR> </table></html>'];
+            
+            function txt = extarctTextFromHTML(htmlTxt)
+                if contains(string(htmlTxt), 'html')
+                    txtStart = strfind(htmlTxt, '<TD>') + 4;
+                    txtEnd = strfind(htmlTxt, '</TD>') - 1;
+                    txt = htmlTxt(txtStart:txtEnd);
+                else
+                    txt = htmlTxt;
+                end
+            end
+            
+            function updatePlanTable(~, ~, handles, ~)
+                set(handles(2, 1), 'RowName', {'Breakfast', 'Morning Snack', 'Lunch', 'Afternoon Snack', 'Dinner', 'Bedtime Snack'});
+                
+                data = get(handles(2, 1), 'Data');
+                for i = 1:length(data(:, 1))
+                    if ~cell2mat(data(i, 1))
+                        data(i, 2:end) = cellfun(@(s)colorText('#2F4F4F', extarctTextFromHTML(s)), data(i, 2:end), 'UniformOutput', 0);
+                    else
+                        data(i, 2:end) = cellfun(@(s)colorText('#FFFFFF', extarctTextFromHTML(s)), data(i, 2:end), 'UniformOutput', 0);
+                    end
+                end
+                set(handles(2, 1), 'Data', data);
             end
             
             dlgTitle = 'Configure Random Meal Plan';
@@ -44,32 +72,33 @@ classdef RandomMealPlan < MealPlan
             formats(end, 1).format = 'text';
             formats(end, 1).size = 200; % Automatically assign the height.
             
-            prompt(end+1, :) = {sprintf('\nBreakfast:\nLunch:\nDinner:'), 'plan', []};
+            prompt(end+1, :) = {'Plan:', 'plan', []};
             formats(end+1, 1).type = 'table';
-            formats(end, 1).format = {'char', 'char', 'char', 'char', 'char'};
-            formats(end, 1).items = {'Min Time (DD HH:MM)', 'Max Time (DD HH:MM)', 'Min Value (g)', 'Max Value (g)', 'Announced Percentage (%)'};
-            formats(end, 1).size = [575, 77];
+            formats(end, 1).format = {'logical', 'char', 'char', 'char', 'char', 'char', 'char'};
+            formats(end, 1).items = {'Enable', 'Min Time (DD HH:MM)', 'Max Time (DD HH:MM)', 'Min Value (g)', 'Max Value (g)', 'Glycemic Load', 'Announced Percentage (%)'};
+            formats(end, 1).size = [590, 150];
+            formats(end, 1).callback = @updatePlanTable;
             
-            prompt(end+1, :) = {'Snack between lunch and dinner.', 'afternoonSnack', []};
-            formats(end+1, 1).type = 'check';
+            inputsdlgOpt.CreateFcn = @updatePlanTable;
             
-            prompt(end+1, :) = {'Snack before sleep.', 'bedtimeSnack', []};
-            formats(end+1, 1).type = 'check';
-            
-            [answer, cancelled] = inputsdlg(prompt, dlgTitle, formats, defaultAns);
+            [answer, cancelled] = inputsdlg(prompt, dlgTitle, formats, defaultAns, inputsdlgOpt);
             
             options = [];
             if ~cancelled
                 options.name = answer.name;
-                options.afternoonSnack = answer.afternoonSnack;
-                options.bedtimeSnack = answer.bedtimeSnack;
                 for mnIdx = 1:numel(mealNames)
-                    options.plan.(mealNames{mnIdx}).time = [parseTime(answer.plan{mnIdx, 1}), parseTime(answer.plan{mnIdx, 2})];
-                    options.plan.(mealNames{mnIdx}).value = [str2double(answer.plan{mnIdx, 3}), str2double(answer.plan{mnIdx, 4})];
-                    if isempty(answer.plan{mnIdx, 5})
-                        options.plan.(mealNames{mnIdx}).announcedFraction = 1;
-                    else
-                        options.plan.(mealNames{mnIdx}).announcedFraction = str2double(answer.plan{mnIdx, 5}) / 100;
+                    options.plan.(mealNames{mnIdx}) = struct('enabled', false, 'time', [], 'value', [], 'glycemicLoad', 1, 'announcedFraction', 0);
+                    if answer.plan{mnIdx, 1} %enabled ?
+                        options.plan.(mealNames{mnIdx}).enabled = true;
+                        rowPlan = cellfun(@(s)extarctTextFromHTML(s), answer.plan(mnIdx, 2:end), 'UniformOutput', false);
+                        options.plan.(mealNames{mnIdx}).time = [parseTime(rowPlan{1}), parseTime(rowPlan{2})];
+                        options.plan.(mealNames{mnIdx}).value = [str2double(rowPlan{3}), str2double(rowPlan{4})];
+                        options.plan.(mealNames{mnIdx}).glycemicLoad = str2double(rowPlan{5});
+                        if isempty(rowPlan{5})
+                            options.plan.(mealNames{mnIdx}).announcedFraction = 1;
+                        else
+                            options.plan.(mealNames{mnIdx}).announcedFraction = str2double(rowPlan{6}) / 100;
+                        end
                     end
                 end
             end
@@ -85,32 +114,56 @@ classdef RandomMealPlan < MealPlan
                 this.name = options.name;
             end
             
+            if exist('options', 'var') && isfield(options, 'dailyCarbsMax')
+                dailyCarbsMax = options.dailyCarbsMax;
+            else
+                dailyCarbsMax = 400;
+            end
+            
+            if exist('options', 'var') && isfield(options, 'dailyCarbsMin')
+                dailyCarbsMin = options.dailyCarbsMin;
+            else
+                dailyCarbsMin = 40;
+            end
+            
             if exist('options', 'var') && isfield(options, 'plan')
                 plan = options.plan;
             else
-                plan.breakfast.time = [7, 9] * 60;
-                plan.breakfast.value = [40, 60];
-                plan.breakfast.announcedFraction = 1;
+                plan.breakfast = struct('enabled', true, ...
+                    'time', [7, 9]*60, ...
+                    'value', [40, 60], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 1);
                 
-                plan.lunch.time = [12, 13] * 60;
-                plan.lunch.value = [60, 100];
-                plan.lunch.announcedFraction = 1;
+                plan.snackMorning = struct('enabled', false, ...
+                    'time', [], ...
+                    'value', [], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 0);
                 
-                plan.dinner.time = [17, 21] * 60;
-                plan.dinner.value = [20, 80];
-                plan.dinner.announcedFraction = 1;
-            end
-            
-            if exist('options', 'var') && isfield(options, 'afternoonSnack')
-                afternoonSnack = options.afternoonSnack;
-            else
-                afternoonSnack = true;
-            end
-            
-            if exist('options', 'var') && isfield(options, 'bedtimeSnack')
-                bedtimeSnack = options.bedtimeSnack;
-            else
-                bedtimeSnack = false;
+                plan.lunch = struct('enabled', true, ...
+                    'time', [12, 13]*60, ...
+                    'value', [60, 100], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 1);
+                
+                plan.snackAfternoon = struct('enabled', false, ...
+                    'time', [], ...
+                    'value', [], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 0);
+                
+                plan.dinner = struct('enabled', true, ...
+                    'time', [17, 21]*60, ...
+                    'value', [30, 70], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 1);
+                
+                plan.snackNight = struct('enabled', false, ...
+                    'time', [], ...
+                    'value', [], ...
+                    'glycemicLoad', 1, ...
+                    'announcedFraction', 0);
             end
             
             if exist('options', 'var') && isfield(options, 'RNGSeed') && options.RNGSeed > 0
@@ -127,63 +180,33 @@ classdef RandomMealPlan < MealPlan
             this.meals.announced = sparse(numSteps, 1);
             
             % Fill meals from plan.
+            mealNames = {'breakfast', 'snackMorning', 'lunch', 'snackAfternoon', 'dinner', 'snackNight'};
             for day = 1:numDays
-                % Breakfast.
-                breakfastIndex = round(((day - 1) * 24 * 60 + plan.breakfast.time(1) + diff(plan.breakfast.time) * rand(1))/this.simulationStepSize) + 1;
-                if simulationStartTime >= plan.breakfast.time(1) && ...
-                        simulationStartTime <= plan.breakfast.time(end) && ...
-                        breakfastIndex < floor(simulationStartTime/simulationStepSize) + 1
-                    breakfastIndex = floor(simulationStartTime/simulationStepSize) + 1;
-                end
-                this.meals.values(breakfastIndex) = round(plan.breakfast.value(1)+diff(plan.breakfast.value)*rand(1));
-                this.meals.glycemicLoads(breakfastIndex) = 1;
-                this.meals.announced(breakfastIndex) = plan.breakfast.announcedFraction > rand(1);
-                
-                % Lunch.
-                lunchIndex = round(((day - 1) * 24 * 60 + plan.lunch.time(1) + diff(plan.lunch.time) * rand(1))/this.simulationStepSize) + 1;
-                if simulationStartTime >= plan.lunch.time(1) && ...
-                        simulationStartTime <= plan.lunch.time(end) && ...
-                        lunchIndex < floor(simulationStartTime/simulationStepSize) + 1
-                    lunchIndex = floor(simulationStartTime/simulationStepSize) + 1;
-                end
-                this.meals.values(lunchIndex) = round(plan.lunch.value(1)+diff(plan.lunch.value)*rand(1));
-                this.meals.glycemicLoads(lunchIndex) = 1;
-                this.meals.announced(lunchIndex) = plan.lunch.announcedFraction > rand(1);
-                
-                % Dinner.
-                dinnerIndex = round(((day - 1) * 24 * 60 + plan.dinner.time(1) + diff(plan.dinner.time) * rand(1))/this.simulationStepSize) + 1;
-                if simulationStartTime >= plan.dinner.time(1) && ...
-                        simulationStartTime <= plan.dinner.time(end) && ...
-                        dinnerIndex < floor(simulationStartTime/simulationStepSize) + 1
-                    dinnerIndex = floor(simulationStartTime/simulationStepSize) + 1;
-                end
-                this.meals.values(dinnerIndex) = round(plan.dinner.value(1)+diff(plan.dinner.value)*rand(1));
-                this.meals.glycemicLoads(dinnerIndex) = 1;
-                this.meals.announced(dinnerIndex) = plan.dinner.announcedFraction > rand(1);
-                
-                % Afternoon snack.
-                if afternoonSnack
-                    if dinnerIndex - lunchIndex - 2 * round(120/this.simulationStepSize) > 0
-                        snackIndex = lunchIndex + randi(dinnerIndex-lunchIndex-2*round(120/this.simulationStepSize)+1) + round(120/this.simulationStepSize);
-                        snack = round(30*rand(1));
-                        if snack > 9 && snackIndex < numel(this.meals.values)
-                            this.meals.values(snackIndex) = this.meals.values(snackIndex) + snack;
-                            this.meals.glycemicLoads(snackIndex) = 1;
-                            this.meals.announced(snackIndex) = 1;
+                totalCarbs = -1;
+                iter = 0;
+                while iter < 100 && (totalCarbs < dailyCarbsMin || totalCarbs > dailyCarbsMax)
+                    iter = iter + 1;
+                    totalCarbs = 0;
+                    meals_ = this.meals;
+                    for mnIdx = 1:numel(mealNames)
+                        if plan.(mealNames{mnIdx}).enabled
+                            Index = round(((day - 1) * 24 * 60 + plan.(mealNames{mnIdx}).time(1) + diff(plan.(mealNames{mnIdx}).time) * rand(1))/this.simulationStepSize) + 1;
+                            if simulationStartTime >= plan.(mealNames{mnIdx}).time(1) && ...
+                                    simulationStartTime <= plan.(mealNames{mnIdx}).time(end) && ...
+                                    Index < floor(simulationStartTime/simulationStepSize) + 1
+                                Index = floor(simulationStartTime/simulationStepSize) + 1;
+                            end
+                            meals_.values(Index) = round(plan.(mealNames{mnIdx}).value(1)+diff(plan.(mealNames{mnIdx}).value)*rand(1));
+                            meals_.glycemicLoads(Index) = plan.(mealNames{mnIdx}).glycemicLoad;
+                            meals_.announced(Index) = plan.(mealNames{mnIdx}).announcedFraction > rand(1);
+                            totalCarbs = totalCarbs + meals_.values(Index);
                         end
                     end
                 end
-                
-                % Bedtime snack.
-                if bedtimeSnack
-                    snackIndex = dinnerIndex + randi(round(120/this.simulationStepSize)+1) + round(60/this.simulationStepSize);
-                    snack = round(30*rand(1));
-                    if snack > 9 && snackIndex < numel(this.meals.values)
-                        this.meals.values(snackIndex) = this.meals.values(snackIndex) + snack;
-                        this.meals.glycemicLoads(snackIndex) = 1;
-                        this.meals.announced(snackIndex) = 1;
-                    end
+                if iter == 100
+                    warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%d, %d] g.', dailyCarbsMin, dailyCarbsMax);
                 end
+                this.meals = meals_;
             end
         end
         
