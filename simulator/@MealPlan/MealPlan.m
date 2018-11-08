@@ -88,10 +88,13 @@ classdef MealPlan < matlab.mixin.Copyable
         %   patient at the given time. TIME is given in minutes. MEAL is a
         %   struct that contains the following fields:
         %
-        %       value - Size of the meal in grams (g).
+        %       value - Amount of carbohydrates in the meal in grams (g).
         %
-        %       glycemicLoad - Fraction representing the glycemic load of
-        %       the meal on the patient.
+        %       glycemicLoad - The glycemic load of the meal. Typical
+        %       values are:
+        %           * Low GL: 10 or less
+        %           * Medium GL: 11 to 19
+        %           * High GL: 20 or more
         meal = getMeal(this, time);
     end
     
