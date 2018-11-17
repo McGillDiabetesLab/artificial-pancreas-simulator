@@ -372,10 +372,10 @@ classdef HovorkaPatient < VirtualPatient
                     case {'ar(1)', 'colored'}
                         phi = 0.8;
                         this.CGM.error = phi * this.CGM.error + ...
-                            sqrt(1-phi^2) * this.opt.sensorNoiseValue * this.state(this.eGluInte) * randn(1);
-                    case 'white'
+                            sqrt(1-phi^2) * this.opt.sensorNoiseValue * randn(1);
+                    case 'mult'
                         this.CGM.error = this.opt.sensorNoiseValue * this.state(this.eGluInte) * randn(1);
-                    case 'flat'
+                    case {'white', 'add'}
                         this.CGM.error = this.opt.sensorNoiseValue * randn(1);
                     otherwise
                         this.CGM.error = 0;
