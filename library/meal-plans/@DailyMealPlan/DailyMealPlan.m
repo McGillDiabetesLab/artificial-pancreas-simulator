@@ -10,10 +10,10 @@ classdef DailyMealPlan < MealPlan
             defaultAns.mealTable = cell(50, 6);
             if ~exist('lastOptions', 'var')
                 defaultAns.name = className;
-                defaultAns.mealTable(1, :) = {true, 'Breakfast', formatTime(8*60, false), '40', '100', '100'};
-                defaultAns.mealTable(2, :) = {true, 'Lunch', formatTime(12*60, false), '80', '100', '100'};
-                defaultAns.mealTable(3, :) = {true, 'Dinner', formatTime(18*60, false), '60', '100', '100'};
-                defaultAns.mealTable(4, :) = {true, 'Snack', formatTime(22*60, false), '30', '100', '100'};
+                defaultAns.mealTable(1, :) = {true, 'Breakfast', formatTime(8*60, false), '40', '25', '100'};
+                defaultAns.mealTable(2, :) = {true, 'Lunch', formatTime(12*60, false), '80', '15', '100'};
+                defaultAns.mealTable(3, :) = {true, 'Dinner', formatTime(18*60, false), '60', '15', '100'};
+                defaultAns.mealTable(4, :) = {true, 'Snack', formatTime(22*60, false), '30', '5', '100'};
             else
                 defaultAns.name = lastOptions.name;
                 for i = 1:numel(lastOptions.meals)
@@ -22,7 +22,7 @@ classdef DailyMealPlan < MealPlan
                         lastOptions.meals(i).description, ...
                         formatTime(lastOptions.meals(i).time, false), ...
                         num2str(lastOptions.meals(i).value), ...
-                        num2str(100*lastOptions.meals(i).glycemicLoad), ...
+                        num2str(lastOptions.meals(i).glycemicLoad), ...
                         num2str(100*lastOptions.meals(i).announcedFraction)};
                 end
             end
@@ -40,7 +40,7 @@ classdef DailyMealPlan < MealPlan
             prompt(end+1, :) = {'', 'mealTable', []};
             formats(end+1, 1).type = 'table';
             formats(end, 1).format = {'logical', 'char', 'char', 'char', 'char', 'char'};
-            formats(end, 1).items = {'Repeat', 'Description', 'Time (DD HH:MM)', 'Value (g)', 'Glycemic Load (%)', 'Announced Percentage (%)'};
+            formats(end, 1).items = {'Repeat', 'Description', 'Time (DD HH:MM)', 'Value (g)', 'Glycemic Load', 'Announced Percentage (%)'};
             formats(end, 1).size = [552, 200];
             
             [answer, cancelled] = inputsdlg(prompt, dlgTitle, formats, defaultAns);
@@ -62,7 +62,7 @@ classdef DailyMealPlan < MealPlan
                         if isempty(answer.mealTable{i, 5})
                             options.meals(i).glycemicLoad = 1;
                         else
-                            options.meals(i).glycemicLoad = str2double(answer.mealTable{i, 5}) / 100;
+                            options.meals(i).glycemicLoad = str2double(answer.mealTable{i, 5});
                         end
                         if isempty(answer.mealTable{i, 6})
                             options.meals(i).announcedFraction = 1;
