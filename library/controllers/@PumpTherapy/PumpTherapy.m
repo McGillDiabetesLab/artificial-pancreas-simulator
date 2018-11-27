@@ -1,5 +1,5 @@
-classdef BasalBolusTherapy < InfusionController
-    %BASALBOLUSTHERAPY  Open loop therapy with a pump.
+classdef PumpTherapy < InfusionController
+    %PUMPTHERAPY  Open loop therapy with a pump.
     
     properties(GetAccess = public, SetAccess = immutable)
         glucoseHistorySize = 100;
@@ -28,9 +28,8 @@ classdef BasalBolusTherapy < InfusionController
                 defaultAns.targetGlucose = 6.0;
                 defaultAns.useFixedISF = false;
                 defaultAns.insulinSensitivity = 2.5;
-                defaultAns.insulinDuration = 3 * 60;
+                defaultAns.insulinDuration = 3.5 * 60;
                 defaultAns.insulinPeakTime = 75;
-                defaultAns.useMeanBasal = false;
                 defaultAns.mealBolus = true;
                 defaultAns.hypoPumpShutoff = false;
                 defaultAns.dGlucosePumpShutoffThresh = 0.03;
@@ -42,9 +41,9 @@ classdef BasalBolusTherapy < InfusionController
                     if strcmp(f{i}, 'corrBolusRules')
                         for k = 1:numel(lastOptions.corrBolusRules)
                             defaultAns.corrBolusTable(k, :) = { ...
-                                lastOptions.corrBolusRules{k}.name, ...
-                                num2str(lastOptions.corrBolusRules{k}.glucoseThresh), ...
-                                num2str(lastOptions.corrBolusRules{k}.dGlucoseThresh)};
+                                lastOptions.corrBolusRules(k).name, ...
+                                num2str(lastOptions.corrBolusRules(k).glucoseThresh), ...
+                                num2str(lastOptions.corrBolusRules(k).dGlucoseThresh)};
                         end
                     else
                         defaultAns.(f{i}) = lastOptions.(f{i});
@@ -100,10 +99,6 @@ classdef BasalBolusTherapy < InfusionController
             formats(end, 1).format = 'float';
             formats(end, 1).size = 110;
             
-            prompt(end+1, :) = {'Use mean insulin basal value.', 'useMeanBasal', []};
-            formats(end+1, 1).type = 'check';
-            formats(end, 1).size = 110;
-            
             prompt(end+1, :) = {'Provide meal boluses.', 'mealBolus', []};
             formats(end+1, 1).type = 'check';
             formats(end, 1).size = 110;
@@ -146,15 +141,15 @@ classdef BasalBolusTherapy < InfusionController
                 f = fields(answer);
                 for i = 1:numel(f)
                     if strcmp(f{i}, 'corrBolusTable')
-                        options.corrBolusRules = cell(1, 1);
+                        options.corrBolusRules = struct();
                         for j = 1:size(answer.corrBolusTable, 1)
                             if (~isempty(answer.corrBolusTable{j, 2}))
-                                options.corrBolusRules{j}.name = answer.corrBolusTable{j, 1};
-                                options.corrBolusRules{j}.glucoseThresh = str2double(answer.corrBolusTable{j, 2});
+                                options.corrBolusRules(j).name = answer.corrBolusTable{j, 1};
+                                options.corrBolusRules(j).glucoseThresh = str2double(answer.corrBolusTable{j, 2});
                                 if (~isempty(answer.corrBolusTable{j, 3}))
-                                    options.corrBolusRules{j}.dGlucoseThresh = str2double(answer.corrBolusTable{j, 3});
+                                    options.corrBolusRules(j).dGlucoseThresh = str2double(answer.corrBolusTable{j, 3});
                                 else
-                                    options.corrBolusRules{j}.dGlucoseThresh = 0.0;
+                                    options.corrBolusRules(j).dGlucoseThresh = 0.0;
                                 end
                             end
                         end
@@ -167,7 +162,7 @@ classdef BasalBolusTherapy < InfusionController
     end
     
     methods(Access = public)
-        function this = BasalBolusTherapy(simulationStartTime, simulationDuration, simulationStepSize, patient, options)
+        function this = PumpTherapy(simulationStartTime, simulationDuration, simulationStepSize, patient, options)
             this@InfusionController(simulationStartTime, simulationDuration, simulationStepSize, patient);
             
             % Parse options.
@@ -176,18 +171,16 @@ classdef BasalBolusTherapy < InfusionController
             this.opt.targetGlucose = 6.0;
             this.opt.useFixedISF = false;
             this.opt.insulinSensitivity = 2.5;
-            this.opt.insulinDuration = 3 * 60;
+            this.opt.insulinDuration = 3.5 * 60;
             this.opt.insulinPeakTime = 75;
-            this.opt.useMeanBasal = false;
-            this.opt.useMeanCarbF = false;
             this.opt.mealBolus = true;
             this.opt.hypoPumpShutoff = false;
             this.opt.dGlucosePumpShutoffThresh = 0.05;
             this.opt.correctionBolus = true;
-            this.opt.corrBolusRules = cell(1, 1);
-            this.opt.corrBolusRules{1}.name = 'Default';
-            this.opt.corrBolusRules{1}.glucoseThresh = 15.0;
-            this.opt.corrBolusRules{1}.dGlucoseThresh = 0.0;
+            this.opt.corrBolusRules = struct();
+            this.opt.corrBolusRules(1).name = 'Default';
+            this.opt.corrBolusRules(1).glucoseThresh = 15.0;
+            this.opt.corrBolusRules(1).dGlucoseThresh = 0.0;
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -274,13 +267,10 @@ classdef BasalBolusTherapy < InfusionController
             
             % Get patient properties.
             prop = this.patient.getProperties();
-            pumpBasals = prop.pumpBasals.value;
             
             % Compute basal.
-            if this.opt.useMeanBasal
-                pumpBasals = mean(pumpBasals) * ones(size(pumpBasals));
-            end
             if isfield(prop, 'pumpBasals')
+                pumpBasals = prop.pumpBasals.value;
                 idx = find(prop.pumpBasals.time <= mod(time, 24*60), 1, 'last');
                 if ~isempty(idx)
                     Ub = pumpBasals(idx);
@@ -297,7 +287,7 @@ classdef BasalBolusTherapy < InfusionController
                 if this.pumpShutOff && ...
                         ((filteredGlucose > 3.9 && ...
                         mean(this.dGlucoseHistory(end-1:end)) > abs(this.opt.dGlucosePumpShutoffThresh)) || ...
-                        filteredGlucose > 5.5)
+                        filteredGlucose > 4.7)
                     this.pumpShutOff = false;
                 end
                 
@@ -322,6 +312,25 @@ classdef BasalBolusTherapy < InfusionController
                 end
             end
             
+            if (isa(this.patient, 'SimplePatient'))
+                XX = this.patient.getState();
+                insulinOnBoard = sum(XX(this.patient.eUb:this.patient.eQbo));
+                
+                if (~isempty(this.patient.meal.time))
+                    if isfield(prop, 'carbFactors')
+                        idx = find(prop.carbFactors.time <= mod(this.patient.meal.time(end), 24*60), 1, 'last');
+                        if ~isempty(idx)
+                            carbFactor = prop.carbFactors.value(idx);
+                        else
+                            carbFactor = prop.carbFactors.value(end);
+                        end
+                    else
+                        carbFactor = 12;
+                    end
+                    this.opt.insulinSensitivity = (this.patient.param.Km * this.patient.param.Bio * carbFactor) / (this.patient.param.Vg);
+                end
+            end
+            
             % Calculate meal bolus:
             % Bolus covers CHO + correction of high/low glucose - insulin on board.
             if this.opt.mealBolus
@@ -338,15 +347,11 @@ classdef BasalBolusTherapy < InfusionController
                         carbFactor = 12;
                     end
                     
-                    if this.opt.useMeanCarbF
-                        carbFactor = mean(prop.carbFactors.value);
-                    end
-                    
                     if this.opt.correctionBolus
+                        correctionBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity;
                         infusions.bolusInsulin = round(2*( ...
                             meal.value / carbFactor + ...
-                            (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity - ...
-                            insulinOnBoard), 1) / 2;
+                            correctionBolus), 1) / 2;
                     else
                         infusions.bolusInsulin = round(2*( ...
                             meal.value / carbFactor), 1) / 2;
@@ -362,14 +367,14 @@ classdef BasalBolusTherapy < InfusionController
             if this.opt.correctionBolus
                 if (~this.opt.mealBolus || meal.value == 0) && ...
                         time - this.lastBolusTime > 1.5 * 60
-                    bolusCorrectionConditions = false;
+                    correctionBolusConditions = false;
                     for k = 1:length(this.opt.corrBolusRules)
-                        bolusCorrectionConditions = bolusCorrectionConditions || ...
-                            (glucose >= this.opt.corrBolusRules{k}.glucoseThresh && ...
-                            this.dGlucoseHistory(:, end) >= this.opt.corrBolusRules{k}.dGlucoseThresh);
+                        correctionBolusConditions = correctionBolusConditions || ...
+                            (glucose >= this.opt.corrBolusRules(k).glucoseThresh && ...
+                            this.dGlucoseHistory(:, end) >= this.opt.corrBolusRules(k).dGlucoseThresh);
                     end
                     
-                    if bolusCorrectionConditions
+                    if correctionBolusConditions
                         corrBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity - ...
                             insulinOnBoard;
                         
