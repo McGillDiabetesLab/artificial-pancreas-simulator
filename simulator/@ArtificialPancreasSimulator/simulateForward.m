@@ -62,6 +62,9 @@ for i = 1:numel(this.patients)
     
     glucoseMeasurement = patient.getGlucoseMeasurement();
     resultsManager.addGlucoseMeasurement(time+this.options.simulationStepSize, glucoseMeasurement);
+    
+    tracerInfo = patient.getTracerInfo();
+    resultsManager.addTracerMeasurement(time+this.options.simulationStepSize, tracerInfo);
 end
 
 this.simulationTime = this.simulationTime + this.options.simulationStepSize;

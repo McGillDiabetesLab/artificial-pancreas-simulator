@@ -102,6 +102,10 @@ classdef VirtualPatient < matlab.mixin.Copyable
         %       basalGlucagon - Basal glucagon rate in ug/h (optional).
         %
         %       bolusGlucagon - Bolus glucagon in ug (optional).
+        %
+        %       basalPramlintide - Basal pramlintide rate in mg/h (optional).
+        %
+        %       bolusPramlintide - Bolus pramlintide in mg (optional).
         updateState(this, startTime, endTime, infusions);
     end
     
@@ -170,6 +174,24 @@ classdef VirtualPatient < matlab.mixin.Copyable
             
             exercise = this.exercisePlan.getExercise(time);
         end
+        
+        function tracerInfo = getTracerInfo(this)
+            %GETTRACERINFO Get the patient's tracer measurements.
+            %   TRACERINFO = GETTRACERINFO() returns the patient's tracer
+            %   measurements. TRACERINFO  is a struct that contains the
+            %   following fields:
+            %
+            %      plasmaGlucose - plasma glucose concentration in umol/Kg.
+            %
+            %      plasmaInsulin - plasma insulin concentration in mU/L.
+            %
+            %      rateGutAbsorption - rate of glucose absorption from the
+            %      gut in umol/Kg/min.
+            
+            tracerInfo.plasmaGlucose = NaN;
+            tracerInfo.plasmaInsulin = NaN;
+            tracerInfo.rateGutAbsorption = NaN;
+        end
     end
     
     methods(Access = protected)
@@ -182,4 +204,3 @@ classdef VirtualPatient < matlab.mixin.Copyable
     end
     
 end
-

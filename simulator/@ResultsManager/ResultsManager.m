@@ -69,6 +69,23 @@ classdef ResultsManager < matlab.mixin.Copyable
         %   These measurements are recorded in mmol/L.
         glucoseMeasurements = {};
         
+        %TRACERMEASUREMENTTIMES  tracer measurement times.
+        %   A cell array containing the times in minutes at which tracer
+        %   measurements were recorded.
+        tracerMeasurementTimes = {};
+        
+        %TRACERMEASUREMENTS  tracer measurements.
+        %   A cell array containing the tracer measurements recorded.
+        %   These measurements are recorded as structs with the following fields:
+        %
+        %      plasmaGlucose - plasma glucose concentration in umol/Kg.
+        %
+        %      plasmaInsulin - plasma insulin concentration in mU/L.
+        %
+        %      rateGutAbsorption - rate of glucose absorption from the
+        %      gut in umol/Kg/min.
+        tracerMeasurements = {};
+        
         %PRIMARYINFUSIONTIMES  Primary infusion times.
         %   A cell array containing the times in minutes at which primary
         %   infusions were recorded.
@@ -196,6 +213,23 @@ classdef ResultsManager < matlab.mixin.Copyable
             this.glucoseMeasurements{end+1} = glucose;
         end
         
+        function addTracerMeasurement(this, time, tracers)
+            %ADDTRACERMEASUREMENT  Record the given glucose measurement.
+            %   ADDTRACERMEASUREMENT(TIME, TRACERS) records the given time
+            %   and tracer measurement. TIME is given in minutes. TRACERS
+            %   is a struct with the following fields:
+            %
+            %      plasmaGlucose - plasma glucose concentration in umol/Kg.
+            %
+            %      plasmaInsulin - plasma insulin concentration in mU/L.
+            %
+            %      rateGutAbsorption - rate of glucose absorption from the
+            %      gut in umol/Kg/min.
+            
+            this.tracerMeasurementTimes{end+1} = time;
+            this.tracerMeasurements{end+1} = tracers;
+        end
+        
         function addPrimaryInfusions(this, time, infusions)
             %ADDPRIMARYINFUSIONS  Record the given primary infusions.
             %   ADDPRIMARYINFUSIONS(TIME, INFUSIONS) records the given time
@@ -234,4 +268,3 @@ classdef ResultsManager < matlab.mixin.Copyable
     end
     
 end
-

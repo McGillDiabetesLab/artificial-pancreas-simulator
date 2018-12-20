@@ -177,6 +177,9 @@ if this.options.interactiveSimulation
     for i = 1:numel(this.configuration.patients)
         glucoseMeasurement = this.configuration.patients{i}.getGlucoseMeasurement();
         this.configuration.resultsManagers{i}.addGlucoseMeasurement(this.simulationTime, glucoseMeasurement);
+        
+        tracerInfo = this.configuration.patients{i}.getTracerInfo();
+        this.configuration.resultsManagers{i}.addTracerMeasurement(this.simulationTime, tracerInfo);
     end
     
     if ~isempty(this.resultsManagerOptions)

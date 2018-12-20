@@ -21,10 +21,11 @@ classdef HovorkaPatient < VirtualPatient
         eInsActT = 4;
         eInsActD = 5;
         eInsActE = 6;
-        eGluPlas = 7;
-        eGluComp = 8;
-        eGluInte = 9;
-        eGluMeas = 10;
+        eGutAbs = 7;
+        eGluPlas = 8;
+        eGluComp = 9;
+        eGluInte = 10;
+        eGluMeas = 11;
     end
     
     properties(GetAccess = public, SetAccess = protected)
@@ -42,7 +43,6 @@ classdef HovorkaPatient < VirtualPatient
         variability; % Intra-patient variability.
         pumpParamError;
         
-        lastTreatmentTime = 0;
         firstIteration = true;
     end
     
@@ -268,6 +268,14 @@ classdef HovorkaPatient < VirtualPatient
             glucose = this.state(this.eGluMeas);
         end
         
+        function tracerInfo = getTracerInfo(this)
+            tracerInfo = getTracerInfo@VirtualPatient(this);
+            
+            tracerInfo.plasmaGlucose = this.state(this.eGluPlas);
+            tracerInfo.rateGutAbsorption = this.state(this.eGutAbs);
+            tracerInfo.plasmaInsulin = this.state(this.eInsPlas);
+        end
+        
         function updateState(this, startTime, endTime, infusions)
             % Reset random number generator
             if this.opt.RNGSeed > 0
@@ -327,7 +335,7 @@ classdef HovorkaPatient < VirtualPatient
                     this.meals(end).TauM = max(min(this.param.TauM.*(1 + this.opt.mealVariability * randn(1)), 75), 25);
                 else
                     this.meals(end).gutAbsorptionModel = @this.gut4CompDelayedModel;
-                    this.meals(end).TauM1 = max(min(this.param.TauM.*(1 + this.opt.mealVariability * randn(1)), 75), 25);
+                    this.meals(end).TauM1 = max(min(this.param.TauM*0.8*(1 + this.opt.mealVariability * randn(1)), 75), 25);
                     this.meals(end).TauM2 = max(min(this.param.TauM*1.5*(1 + this.opt.mealVariability * randn(1)), 75), 25);
                     if this.opt.mealVariability > 0.0
                         this.meals(end).Delay = 10 + 20 * rand(1);
@@ -342,7 +350,6 @@ classdef HovorkaPatient < VirtualPatient
                 else
                     this.meals(end).Bio = this.param.Bio;
                 end
-                this.lastTreatmentTime = startTime;
             end
             
             % Add insulin bolus.
@@ -359,6 +366,11 @@ classdef HovorkaPatient < VirtualPatient
                 [startTime, endTime], ...
                 this.state);
             this.state = Y(end, :)';
+            Um = 0;
+            for m = 1:length(this.meals)
+                Um = Um + this.meals(m).gutAbsorptionModel(endTime, this.meals(m));
+            end
+            this.state(this.eGutAbs) = Um;
             
             % update sensor noise
             if this.firstIteration
@@ -386,13 +398,13 @@ classdef HovorkaPatient < VirtualPatient
             this.state(this.eGluMeas) = this.state(this.eGluInte) + this.CGM.error;
             
             % Add treatment.
-            if this.opt.useTreatments ...
-                    && startTime - this.lastTreatmentTime > 35
-                meals_ = this.mealPlan.getMeal(startTime:this.mealPlan.simulationStepSize:startTime+20);
-                if sum(meals_.value) < 15 % if patient is not planning to eat more than 15 g
+            if this.opt.useTreatments
+                meals_ = this.mealPlan.getMeal(max(startTime-30, 0):this.mealPlan.simulationStepSize:startTime+20);
+                if sum(meals_.value) < 15 % if patient had or planing to have a meal
                     hypoThreshold = 3.0; % mmol/L.
                     prolongedHypoThreshold = 3.9; % mmol/L.
-                    if all(this.stateHistory(this.eGluPlas, end-5:end)/this.param.Vg < prolongedHypoThreshold)
+                    prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
+                    if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
                         this.addTreatment(startTime, 30);
                     elseif this.state(this.eGluPlas) / this.param.Vg < hypoThreshold
                         this.addTreatment(startTime, 15);
@@ -420,13 +432,12 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function initialState = getInitialState(this)
-            
             initialState = nan(this.eGluMeas, 1);
             
-            recomputeGs0 = true;
+            recomputeGBasal = true;
             iter = 0;
             
-            while iter < 1e2 && recomputeGs0
+            while iter < 1e2 && recomputeGBasal
                 iter = iter + 1;
                 
                 % Basal Glucose (mmol/L).
@@ -445,7 +456,7 @@ classdef HovorkaPatient < VirtualPatient
                 Fn = Q10 * (this.param.F01 / 0.85) / (Q10 + this.param.Vg);
                 Fr = this.param.RCl * (Q10 - this.param.RTh * this.param.Vg) * (Q10 > this.param.RTh * this.param.Vg);
                 Slin = roots([ ...
-                    (-Q10 * this.param.St * this.param.Sd - this.param.EGP0 * this.param.Sd * this.param.Se), ...
+                    (-Q10 * this.param.St - this.param.EGP0 * this.param.Se) * this.param.Sd, ...
                     (-this.param.k12 * this.param.EGP0 * this.param.Se + (this.param.EGP0 - Fr - Fn) * this.param.Sd), ...
                     this.param.k12 * (this.param.EGP0 - Fn - Fr), ...
                     ]);
@@ -468,13 +479,13 @@ classdef HovorkaPatient < VirtualPatient
                 this.param.Ub = 60 * Ip0 * this.param.ke / (1e6 / (this.param.Vi * this.param.w));
                 
                 if this.opt.basalGlucose < 0
-                    if this.param.Ub < 2.2 && this.param.Ub > 0.1
-                        recomputeGs0 = false;
+                    if this.param.Ub < 2.5 && this.param.Ub > 0.05
+                        recomputeGBasal = false;
                     else
-                        recomputeGs0 = true;
+                        recomputeGBasal = true;
                     end
                 else
-                    recomputeGs0 = false;
+                    recomputeGBasal = false;
                 end
             end
             
@@ -515,6 +526,9 @@ classdef HovorkaPatient < VirtualPatient
             % Subcutenous insulin
             initialState(this.eInsSub1) = this.param.Ub / 60 / this.param.ka;
             initialState(this.eInsSub2) = initialState(this.eInsSub1);
+            
+            % Reset Gut Absorption
+            initialState(this.eGutAbs) = 0;
             
             initialState = initialState(:);
         end
@@ -605,7 +619,6 @@ classdef HovorkaPatient < VirtualPatient
             this.meals(end).gutAbsorptionModel = @this.gut2CompModel;
             this.meals(end).TauM = 20;
             this.meals(end).Bio = this.param.Bio;
-            this.lastTreatmentTime = time;
         end
     end
     

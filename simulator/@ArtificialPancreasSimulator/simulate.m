@@ -13,7 +13,7 @@ if this.options.interactiveSimulation
 end
 
 if nargin < 2
-   patientIndexes = 1:numel(this.patients);
+    patientIndexes = 1:numel(this.patients);
 end
 
 if ~this.firstSimulation
@@ -80,6 +80,9 @@ time = this.options.simulationStartTime;
 glucoseMeasurement = patient.getGlucoseMeasurement();
 resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
 
+tracerInfo = patient.getTracerInfo();
+resultsManager.addTracerMeasurement(time, tracerInfo);
+
 while time < this.options.simulationStartTime + this.options.simulationDuration
     primaryInfusions = primaryController.getInfusions(time);
     resultsManager.addPrimaryInfusions(time, primaryInfusions);
@@ -97,6 +100,9 @@ while time < this.options.simulationStartTime + this.options.simulationDuration
     
     glucoseMeasurement = patient.getGlucoseMeasurement();
     resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
+    
+    tracerInfo = patient.getTracerInfo();
+    resultsManager.addTracerMeasurement(time, tracerInfo);
 end
 
 end

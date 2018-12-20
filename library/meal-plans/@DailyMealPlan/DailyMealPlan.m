@@ -108,7 +108,7 @@ classdef DailyMealPlan < MealPlan
             
             % Fill meals from meal table.
             for i = 1:numel(meals)
-                index = round(meals(i).time/this.simulationStepSize) + 1;
+                index = floor(meals(i).time/this.simulationStepSize) + 1;
                 
                 this.meals.values(index) = meals(i).value;
                 this.meals.glycemicLoads(index) = meals(i).glycemicLoad;
@@ -116,13 +116,13 @@ classdef DailyMealPlan < MealPlan
                 
                 if meals(i).repeat
                     day = 1;
-                    index = round((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                    index = floor((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     while index <= numSteps
                         this.meals.values(index) = meals(i).value;
                         this.meals.glycemicLoads(index) = meals(i).glycemicLoad;
                         this.meals.announced(index) = meals(i).announcedFraction > rand(1);
                         day = day + 1;
-                        index = round((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                        index = floor((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     end
                 end
             end
