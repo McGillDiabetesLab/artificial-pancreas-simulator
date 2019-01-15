@@ -39,7 +39,7 @@ This repository is structured as follows
 
 The core implementation of the simulator is here. The simulator provides the back-end framework which handles communication between libraries, real-time simulation, and GUI. Each component of the simulator is well documented, and documentation can be accessed by:
 
-```
+```Matlab
 doc ArtificialPancreasSimulator
 ```
 
@@ -61,7 +61,7 @@ This folder contains additional documentation.
 
 The user interface can be used by running:
 
-```
+```Matlab
 simulation
 ```
 
@@ -75,19 +75,19 @@ The GUI is composed of two parts **Configuration** and **Simulation**. In config
 
 Start a new m-File, this file can be in any folder.  
 The first thing we need to do is to configure the path to include the _artificial pancreas simulator_. For this, we write:
-```
+```Matlab
 run('[YOUR PATH]/artificial-pancreas-simulator/configurePaths');
 ```
 
 Next we should configure the simulator options using `SimulatorOptions`
 
-```
+```Matlab
 options = SimulatorOptions;
 ```
 
 Minimal `SimulatorOptions` can be set by: 
 
-```
+```Matlab
 options.simulationStartTime = 8 * 60; % minutes
 options.simulationDuration = 24 * 60; % minutes
 options.simulationStepSize = 10; % minutes
@@ -104,13 +104,13 @@ Observe how `options.virtualPatients` is a double cell using `{{`, `}}`. This is
 
 We need to specify the format in which the results should be done, we do this by:
 
-```
+```Matlab
 options.resultsManager = 'PublishResultsManager';
 ```
 
 Now, we can run the simulation by doing:
 
-```
+```Matlab
 simulator = ArtificialPancreasSimulator(options);
 simulator.simulate();
 ```
