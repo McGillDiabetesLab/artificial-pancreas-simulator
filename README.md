@@ -59,6 +59,18 @@ This folder contains additional documentation.
 
 ### Graphical User Interface
 
+The user interface can be used by running:
+
+```
+simulation
+```
+
+As a result the following GUI should show.
+
+![](docs/GUIPic.png)
+
+The GUI is composed of two parts **Configuration** and **Simulation**. In configuration, it is possible to reconfigure each component. In simulation, you can select the desired configuration to simulate.
+
 ### Inline Functions
 
 Start a new m-File, this file can be in any folder.  
@@ -100,6 +112,12 @@ Now, we can run the simulation by doing:
 simulator = ArtificialPancreasSimulator(options);
 simulator.simulate();
 ```
+
+This procedure is implemented in `example\inlineSim.m`.
+
+### Example of expected result
+
+![](docs/inlineSim.png)
 
 ## Additional Resources
 - [Software Requirements Specification](docs/Software-Requirements-Specification.md)
