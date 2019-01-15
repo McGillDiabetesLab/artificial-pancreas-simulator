@@ -8,16 +8,16 @@ The simulator is divided into three components: the virtual patient, the infusio
 
 #### Virtual Patient
 
-The virtual patient defines the patient model used in the simulation. It defines the dynamics of the gluco-regulatory system after infusion of a drugs such as insulin or glucagon, as well as after meals consumption or exercise. It is embodied by the `VirtualPatient` class.   
-Part of this component are the [`MealPlan`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40MealPlan/MealPlan.m) and `ExercisePlan` classes, which define when the patient receives meals or exercises and the corresponding quantities.
+The virtual patient defines the patient model used in the simulation. It defines the dynamics of the gluco-regulatory system after infusion of a drugs such as insulin or glucagon, as well as after meals consumption or exercise. It is embodied by the [`VirtualPatient`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40VirtualPatient/VirtualPatient.m) class.   
+Part of this component are the [`MealPlan`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40MealPlan/MealPlan.m) and [`ExercisePlan`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40ExercisePlan/ExercisePlan.m) classes, which define when the patient receives meals or exercises and the corresponding quantities.
 
 #### Infusion Controller
 
-The infusion controller defines the algorithm used to control the administration of infusions to the patient. It uses blood glucose readings from the patient, as well as meal and exercise information, to set the basal and bolus rates of hormones such as insulin and glucagon. It is embodied by the `InfusionController` class.
+The infusion controller defines the algorithm used to control the administration of infusions to the patient. It uses blood glucose readings from the patient, as well as meal and exercise information, to set the basal and bolus rates of hormones such as insulin and glucagon. It is embodied by the [`InfusionController`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40InfusionController/InfusionController.m) class.
 
 #### Results Manager
 
-The results manager defines how the results should be accumulated during the simulation and how the results should be presented to the user after the simulation has completed. It is embodied by the `ResultsManager` class.
+The results manager defines how the results should be accumulated during the simulation and how the results should be presented to the user after the simulation has completed. It is embodied by the [`ResultsManager`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40ResultsManager/ResultsManager.m) class.
 
 ## Structure
 
