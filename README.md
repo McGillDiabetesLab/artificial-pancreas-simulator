@@ -51,7 +51,7 @@ Minimal implementation of different component of the simulator. Users are encour
 
 In this folder you can find empty template which can serve as a starting point for your own library implementation.
 
-### docs
+### Docs
 
 This folder contains additional documentation.
 
@@ -123,8 +123,9 @@ This procedure is implemented in `example\inlineSim.m`.
 
 ## Additional Resources
 - [Software Requirements Specification](docs/Software-Requirements-Specification.md)
-- [TODO: Getting Started](docs/Getting-Started.md)
+- [TODO: Multiple Patient Simulation](docs/Multiple-Patient-Simulation.md)
 - [TODO: Adding User Functions](docs/Adding-User-Functions.md)
+- [TODO: HovorkaPatient Detailed](docs/HovorkaPatient-Detailed.md)
 
 ## Contact
 For additional assistance, please use [GitHub Issues](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/issues).
