@@ -6,7 +6,7 @@ function patient0(this)
 % [2] D. Boiroux et al., "Adaptive control in an artificial pancreas for
 % people with type 1 diabetes,", 2017.
 
-this.param.w = 65 + (95 - 65) * rand(1); % Patient weight (kg).
+this.param.w = 45 + (95 - 45) * rand(1); % Patient weight (kg).
 
 % Glucose submodel.
 resampleValidParam = true;
@@ -29,11 +29,11 @@ while iter < 1e2 && resampleValidParam
     this.param.ka1 = lognrnd(log(0.0035), 0.4); % Activation rate of remote insulin effect on glucose distribution (1/min).
     this.param.ka2 = lognrnd(log(0.055), 0.4); % Activation rate of remote insulin effect on glucose disposal (1/min).
     this.param.ka3 = lognrnd(log(0.025), 0.4); % Activation rate of remote insulin effect on endogenous glucose production (1/min).
-    this.param.St = lognrnd(log(18.5e-4), 0.4); % Insulin sensitivity of glucose transport (L / (min mU)).
-    this.param.Sd = lognrnd(log(5.1e-4), 0.4); % Insulin sensitivity of glucose disposal (L / (min mU)).
+    this.param.St = lognrnd(log(18.0e-4), 0.4); % Insulin sensitivity of glucose transport (L / (min mU)).
+    this.param.Sd = lognrnd(log(5.0e-4), 0.4); % Insulin sensitivity of glucose disposal (L / (min mU)).
     this.param.Se = lognrnd(log(190e-4), 0.4); % Insulin sensitivity of suppression of endogenous glucose production (L/mU).
     this.param.ka = lognrnd(log(0.018), 0.2); % Insulin absorption rate (1/min).
-    this.param.ke = lognrnd(log(0.12), 0.2); % Insulin elimination rate (1/min).
+    this.param.ke = lognrnd(log(0.14), 0.2); % Insulin elimination rate (1/min).
     
     % Meal submodel.
     this.param.Bio = 0.9; % Bioavailability of CHO (%).
@@ -49,7 +49,7 @@ while iter < 1e2 && resampleValidParam
     
     % Other constants.
     this.param.Vi = lognrnd(log(120), 0.05); % Insulin distribution volume (mL/kg).
-    this.param.Vg = lognrnd(log(150), 0.05); % Glucose distribution volume (mL/kg).
+    this.param.Vg = lognrnd(log(160), 0.05); % Glucose distribution volume (mL/kg).
     this.param.MCHO = 180.1577; % Molecular wight of glucose (g/mol).
     
     % Validate parameters

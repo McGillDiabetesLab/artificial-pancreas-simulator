@@ -56,8 +56,8 @@ classdef HovorkaPatient < VirtualPatient
                 lastOptions.sensorNoiseValue = 0.0;
                 lastOptions.intraVariability = 0.0;
                 lastOptions.mealVariability = 0.0;
-                lastOptions.initialGlucose = -1;
-                lastOptions.basalGlucose = 5.5;
+                lastOptions.initialGlucose = 6.5;
+                lastOptions.basalGlucose = 6.5;
                 lastOptions.useTreatments = true;
             end
             
@@ -161,8 +161,8 @@ classdef HovorkaPatient < VirtualPatient
             this.opt.sensorNoiseValue = 0;
             this.opt.intraVariability = 0.0;
             this.opt.mealVariability = 0.0;
-            this.opt.initialGlucose = -1;
-            this.opt.basalGlucose = 5.5;
+            this.opt.initialGlucose = 6.5;
+            this.opt.basalGlucose = 6.5;
             this.opt.useTreatments = true;
             this.opt.wrongPumpParam = false;
             this.opt.pumpParamError = struct();
@@ -207,7 +207,7 @@ classdef HovorkaPatient < VirtualPatient
             this.param.pumpBasals.time = 0;
             
             % Compute an approximation of patient carb factor.
-            meanCarbF = (this.param.MCHO * (0.4 * max(this.param.St, 16e-4) + 0.6 * min(max(this.param.Sd, 3e-4), 7e-4)) * 5.0 * this.param.Vg) / (this.param.ke * this.param.Vi); % g/U.
+            meanCarbF = (this.param.MCHO * (0.4 * max(this.param.St, 16e-4) + 0.6 * min(max(this.param.Sd, 3e-4), 12e-4)) * this.opt.basalGlucose * this.param.Vg) / (this.param.ke * this.param.Vi); % g/U.
             this.param.carbFactors.value = min(max(round(2*[meanCarbF, meanCarbF, meanCarbF])/2, 2), 25);
             this.param.carbFactors.time = [7; 12; 17] * 60;
             
@@ -399,10 +399,11 @@ classdef HovorkaPatient < VirtualPatient
             
             % Add treatment.
             if this.opt.useTreatments
-                meals_ = this.mealPlan.getMeal(max(startTime-30, 0):this.mealPlan.simulationStepSize:startTime+20);
-                if sum(meals_.value) < 15 % if patient had or planing to have a meal
-                    hypoThreshold = 3.0; % mmol/L.
-                    prolongedHypoThreshold = 3.9; % mmol/L.
+                meals_ = this.mealPlan.getMeal(max(startTime-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:startTime+20);
+                treats_ = this.mealPlan.getTreatment(max(startTime-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:startTime);
+                if sum(meals_.value) + sum(treats_) < 15 % if patient had or planing to have a meal
+                    hypoThreshold = 2.8; % mmol/L.
+                    prolongedHypoThreshold = 3.7; % mmol/L.
                     prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
                     if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
                         this.addTreatment(startTime, 30);

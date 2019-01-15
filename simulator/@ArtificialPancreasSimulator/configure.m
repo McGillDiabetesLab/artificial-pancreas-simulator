@@ -162,12 +162,12 @@ if iscell(this.options.resultsManager) && numel(this.options.resultsManager) >= 
 end
 
 %% Configure parallel execution.
-if this.options.parallelExecution ~= true
+if isempty(this.options.parallelExecution)
     this.options.parallelExecution = false;
 end
 
 %% Configure interactive simulation.
-if this.options.interactiveSimulation ~= true
+if isempty(this.options.interactiveSimulation)
     this.options.interactiveSimulation = false;
 end
 

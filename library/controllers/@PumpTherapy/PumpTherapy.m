@@ -25,7 +25,7 @@ classdef PumpTherapy < InfusionController
             defaultAns.corrBolusTable = cell(20, 3);
             if ~exist('lastOptions', 'var')
                 defaultAns.name = className;
-                defaultAns.targetGlucose = 6.0;
+                defaultAns.targetGlucose = 6.5;
                 defaultAns.useFixedISF = false;
                 defaultAns.insulinSensitivity = 2.5;
                 defaultAns.insulinDuration = 3.5 * 60;
@@ -168,7 +168,7 @@ classdef PumpTherapy < InfusionController
             % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
-            this.opt.targetGlucose = 6.0;
+            this.opt.targetGlucose = 6.5;
             this.opt.useFixedISF = false;
             this.opt.insulinSensitivity = 2.5;
             this.opt.insulinDuration = 3.5 * 60;
@@ -309,25 +309,6 @@ classdef PumpTherapy < InfusionController
                         time-this.bolusHistory.time(b), ...
                         this.opt.insulinPeakTime, ...
                         this.opt.insulinDuration);
-                end
-            end
-            
-            if (isa(this.patient, 'SimplePatient'))
-                XX = this.patient.getState();
-                insulinOnBoard = sum(XX(this.patient.eUb:this.patient.eQbo));
-                
-                if (~isempty(this.patient.meal.time))
-                    if isfield(prop, 'carbFactors')
-                        idx = find(prop.carbFactors.time <= mod(this.patient.meal.time(end), 24*60), 1, 'last');
-                        if ~isempty(idx)
-                            carbFactor = prop.carbFactors.value(idx);
-                        else
-                            carbFactor = prop.carbFactors.value(end);
-                        end
-                    else
-                        carbFactor = 12;
-                    end
-                    this.opt.insulinSensitivity = (this.patient.param.Km * this.patient.param.Bio * carbFactor) / (this.patient.param.Vg);
                 end
             end
             
