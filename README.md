@@ -9,7 +9,7 @@ The simulator is divided into three components: the virtual patient, the infusio
 #### Virtual Patient
 
 The virtual patient defines the patient model used in the simulation. It defines the dynamics of the gluco-regulatory system after infusion of a drugs such as insulin or glucagon, as well as after meals consumption or exercise. It is embodied by the `VirtualPatient` class.   
-Part of this component are the `MealPlan` and `ExercisePlan` classes, which define when the patient receives meals or exercises and the corresponding quantities.
+Part of this component are the [`MealPlan`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40MealPlan/MealPlan.m) and `ExercisePlan` classes, which define when the patient receives meals or exercises and the corresponding quantities.
 
 #### Infusion Controller
 
