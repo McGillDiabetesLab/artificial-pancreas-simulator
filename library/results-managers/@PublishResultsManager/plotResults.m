@@ -52,6 +52,7 @@ prop = this.patient.getProperties();
 %% Plot all
 title(figureTitle, 'FontSize', 18);
 
+% Treat MDI controllers differently
 if ~contains(class(this.primaryController), 'mdi', 'IgnoreCase',true)
     % on the right axis
     yyaxis right
@@ -61,12 +62,6 @@ if ~contains(class(this.primaryController), 'mdi', 'IgnoreCase',true)
             'color', blue, ...
             'linewidth', 3.7, ...
             'Marker', 'none');
-        
-        %     for n = 1:1:length(bolusGlucagon)
-        %         if bolusGlucagon(n) > 0
-        %             GLUCAGON = bar(utime(n), bolusGlucagon(n)/2, 'BarWidth', 7.0, 'FaceColor', [0, 1, 0], 'LineStyle', 'none');
-        %         end
-        %     end
     end
     
     % set up right y axis
@@ -155,7 +150,7 @@ for n = 1:1:length(utime)
     end
 end
 
-% plot Insulin Basal
+% plot Insulin Basal for MDI controllers
 if contains(class(this.primaryController), 'mdi', 'IgnoreCase',true)
     bsaslDose = round(2*prop.pumpBasals.value*24)/2;
     INS_BASAL = plot(utime((21*60 - mod(this.simulationStartTime, 1440))/this.simulationStepSize + 1), 18.5,...

@@ -6,6 +6,8 @@ classdef PublishResultsManager < ResultsManager
     
     methods(Static)
         
+        %% plotSummary
+        plotSummary(resultsManagers);
         %% configure
         function options = configure(className, lastOptions)
             if ~exist('lastOptions', 'var')
@@ -43,6 +45,11 @@ classdef PublishResultsManager < ResultsManager
                 options = struct();
             end
             
+            if isfield(options, 'summary') && options.summary
+                PublishResultsManager.plotSummary(resultsManagers);
+                return;
+            end
+            
             for i = 1:numel(resultsManagers)
                 if isfield(options, 'title')
                     figureTitle = options.title;
@@ -77,22 +84,7 @@ classdef PublishResultsManager < ResultsManager
                 clf;
                 
                 resultsManagers{i}.figIDs = h;
-                
-                if isfield(options, 'tracerInfo')
-                    tracerInfo = options.tracerInfo;
-                else
-                    tracerInfo = false;
-                end
-                
-                if tracerInfo
-                    subplot(3, 1, 1:2); cla;
-                    resultsManagers{i}.plotResults(figureTitle, grayscale);
-                    
-                    subplot(3, 1, 3); cla;
-                    resultsManagers{i}.plotTracerInfo(figureTitle, grayscale);
-                else
-                    resultsManagers{i}.plotResults(figureTitle, grayscale);
-                end
+                resultsManagers{i}.plotResults(figureTitle, grayscale);
             end
         end
     end
@@ -105,7 +97,6 @@ classdef PublishResultsManager < ResultsManager
     
     methods(Access = public)
         plotResults(this, title, grayscale)
-        plotTracerInfo(this, title, grayscale)
     end
     
 end

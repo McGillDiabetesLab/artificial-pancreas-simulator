@@ -91,14 +91,16 @@ Minimal `SimulatorOptions` can be set by:
 options.simulationStartTime = 8 * 60; % minutes
 options.simulationDuration = 24 * 60; % minutes
 options.simulationStepSize = 10; % minutes
-options.virtualPatients = { ...
+options.virtualPatients = {{ ...
     'HovorkaPatient', ...
     'DailyMealPlan', ...
     'EmptyExercisePlan', ...
-    'PumpTherapy'};
+    'PumpTherapy'}};
 ```
 
 In this example, we want to run a 24h simulation, starting at 8am, with a step size of 10 min. The simulation will use `HovorkaPatient` for the virtual patient simulation, the meals that will be consumed by this patient are described in `DailyMealPlan`, the patient will not exercise `EmptyExercisePlan`, and the patient will use a standard insulin pump for his insulin treatment `PumpTherapy`.
+
+Observe how `options.virtualPatients` is a double cell using `{{`, `}}`. This is done since the `virtualPatients` option support multiple patient definition, see `example/multiPatientSim.m` for an example.
 
 We need to specify the format in which the results should be done, we do this by:
 
