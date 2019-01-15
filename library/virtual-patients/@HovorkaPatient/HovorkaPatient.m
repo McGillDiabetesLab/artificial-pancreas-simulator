@@ -177,7 +177,7 @@ classdef HovorkaPatient < VirtualPatient
                 end
             end
             
-            % Set patient name
+            % Set patient name.
             this.name = this.opt.name;
             
             % Generate patient parameter.
@@ -239,7 +239,7 @@ classdef HovorkaPatient < VirtualPatient
             this.variability.ka.val = this.param.ka;
             this.variability.ke.val = this.param.ke;
             
-            % Set scaling for states
+            % Set scaling for states.
             this.stateScale = [; ...
                 1.0; ... % U
                 1.0; ... % U
@@ -277,7 +277,7 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function updateState(this, startTime, endTime, infusions)
-            % Reset random number generator
+            % Reset random number generator.
             if this.opt.RNGSeed > 0
                 rng(mod(startTime*this.opt.RNGSeed, 999983));
             end
@@ -372,7 +372,7 @@ classdef HovorkaPatient < VirtualPatient
             end
             this.state(this.eGutAbs) = Um;
             
-            % update sensor noise
+            % Update sensor noise.
             if this.firstIteration
                 this.CGM.error = 0;
             else
@@ -394,7 +394,7 @@ classdef HovorkaPatient < VirtualPatient
                 end
             end
             
-            % add sensor noise
+            % Add sensor noise.
             this.state(this.eGluMeas) = this.state(this.eGluInte) + this.CGM.error;
             
             % Add treatment.
@@ -425,7 +425,7 @@ classdef HovorkaPatient < VirtualPatient
         function meal = getMeal(this, time)
             meal = this.getMeal@VirtualPatient(time);
             
-            % This patient can forget to announce meals to the controller!
+            % This patient can forget to announce meals to the controller.
             if isfield(meal, 'announced')
                 meal.value = meal.announced .* meal.value;
                 meal.glycemicLoad = meal.announced .* meal.glycemicLoad;
