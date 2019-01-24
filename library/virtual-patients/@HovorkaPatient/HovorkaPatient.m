@@ -59,6 +59,7 @@ classdef HovorkaPatient < VirtualPatient
                 lastOptions.initialGlucose = 6.5;
                 lastOptions.basalGlucose = 6.5;
                 lastOptions.useTreatments = true;
+                lastOptions.rngSeed = -1;
             end
             
             dlgTitle = 'Configure Hovorka Patient';
@@ -139,6 +140,12 @@ classdef HovorkaPatient < VirtualPatient
             
             prompt(end+1, :) = {'Automatically consume carbs when hypo.', 'useTreatments', []};
             formats(end+1, 1).type = 'check';
+            
+            prompt(end+1, :) = {'RNG for reproducibility (-1 for random value)', 'rngSeed', []};
+            formats(end+1, 1).type = 'edit';
+            formats(end, 1).format = 'float';
+            formats(end, 1).size = 200;
+            formats(end, 1).span = [1, 2];
             
             [answer, cancelled] = inputsdlg(prompt, dlgTitle, formats, lastOptions);
             
