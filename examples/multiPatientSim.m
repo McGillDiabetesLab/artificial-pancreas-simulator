@@ -4,7 +4,6 @@ run('../configurePaths');
 
 % Make sure all paths are set correctly
 options = SimulatorOptions;
-
 options.simulationDuration = 24 * 60; % minutes
 options.simulationStartTime = 8 * 60; % minutes
 options.simulationStepSize = 10; % minutes
@@ -54,6 +53,9 @@ optMeal.plan.snackNight = struct('enabled', true, ...
     'value', [20, 30], ...
     'glycemicLoad', 5, ...
     'announcedFraction', 0);
+
+% Set rng for reproducibility
+rng(777);
 
 % Define a virtual patients
 options.virtualPatients = {};
