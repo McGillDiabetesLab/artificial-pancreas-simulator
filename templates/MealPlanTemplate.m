@@ -6,7 +6,7 @@ classdef MealPlanTemplate < MealPlan
     end
 
     methods
-        function this = MealPlanTemplate(simulationDuration, simulationStartTime, simulationStepSize)
+        function this = MealPlanTemplate(simulationDuration, simulationStartTime, simulationStepSize, options)
             % Default constructor
 
             % Calls the base class constructor to initialize the base object. This is required.

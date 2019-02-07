@@ -6,7 +6,7 @@ classdef InfusionControllerTemplate < InfusionController
     end
 
     methods
-        function this = InfusionControllerTemplate(simulationDuration, simulationStartTime, simulationStepSize, patient)
+        function this = InfusionControllerTemplate(simulationDuration, simulationStartTime, simulationStepSize, patient, options)
             % Default constructor
 
             % Calls the base class constructor to initialize the base object. This is required.
