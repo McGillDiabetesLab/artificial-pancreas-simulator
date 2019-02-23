@@ -39,6 +39,7 @@ if ~isempty(uval)
 end
 
 meals = this.patient.mealPlan.getMeal(ytime);
+usedMeals = this.patient.getMeal(ytime);
 treats = this.patient.mealPlan.getTreatment(ytime);
 hypoCount = sum(full(treats) > 0);
 
@@ -65,8 +66,8 @@ if ~contains(class(this.primaryController), 'mdi', 'IgnoreCase',true)
     end
     
     % set up right y axis
-    ylim([0, 22.5 / 4]);
-    yticks([0:1:7])
+    ylim([0, 24.5/4]);
+    yticks([0:1:6])
     if exist('GLUCAGON', 'var') > 0
         ylabel('Insulin (U/h) & Glucagon (0.5xU)', 'color', 'k');
     elseif exist('P_BASAL', 'var') > 0
@@ -123,6 +124,33 @@ for n = 1:1:length(ytime)
         end
     end
 end
+
+% plot Used Meals
+plotted_carbs = zeros(size(ytime));
+for n = 1:1:length(ytime)
+    if length(usedMeals.value) >= n && usedMeals.value(n) > 0
+        USED_MEALS = plot(ytime(n), 23.5,...
+            '-', ...
+            'color', 'm', ...
+            'Marker', 'o', ...
+            'MarkerSize', 17, ...
+            'MarkerFaceColor', 'm', ...
+            'MarkerEdgeColor', 'm');
+        delta_n = (n - 2:n + 2);
+        delta_n(delta_n <= 0 | delta_n > length(ytime)) = [];
+        if ~plotted_carbs(n)
+            text(ytime(n), 22.2,...
+                [num2str(sum(usedMeals.value(delta_n)), '%d'), 'g'], ...
+                'VerticalAlignment', 'bottom', ...
+                'HorizontalAlignment', 'center', ...
+                'Color', 'm', ...
+                'FontSize', 15, ...
+                'FontWeight', 'bold');
+            plotted_carbs(delta_n) = ones(size(delta_n));
+        end
+    end
+end
+
 
 % plot Insulin Boluses
 plotted_i_boluses = zeros(size(utime));
@@ -190,8 +218,8 @@ for k = 1:length(ax.YAxis)
 end
 ax.XAxis.FontSize = 14;
 xlim([this.simulationStartTime - 40, this.simulationStartTime + this.simulationDuration + 40]);
-ylim([0, 22.5]);
-yticks([0:2:22])
+ylim([0, 24.5]);
+yticks([0:2:24])
 xlabel('Time (HH:MM)');
 ylabel('Sensor Glucose (mmol/L)');
 
@@ -220,6 +248,10 @@ end
 if exist('MEALS', 'var') > 0
     legendHandlers(end+1) = MEALS;
     legendTitles{end+1} = 'Meal CHO';
+end
+if exist('USED_MEALS', 'var') > 0
+    legendHandlers(end+1) = USED_MEALS;
+    legendTitles{end+1} = 'Counted Meal CHO';
 end
 if exist('EXERS', 'var') > 0
     legendHandlers(end+1) = EXERS;

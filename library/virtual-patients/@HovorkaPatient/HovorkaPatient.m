@@ -11,7 +11,7 @@ classdef HovorkaPatient < VirtualPatient
     %
     %   See also /VIRTUALPATIENT.
     
-    properties(GetAccess = public, SetAccess = immutable)
+    properties (GetAccess = public, SetAccess = immutable)
         stateHistorySize = 1000;
         
         % State enumeration.
@@ -28,7 +28,7 @@ classdef HovorkaPatient < VirtualPatient
         eGluMeas = 11;
     end
     
-    properties(GetAccess = public, SetAccess = protected)
+    properties (GetAccess = public, SetAccess = protected)
         opt; % Options configured by the user.
         param; % Parameters configured by the specific patient model (patient0, patient1, ...).
         
@@ -42,11 +42,12 @@ classdef HovorkaPatient < VirtualPatient
         CGM; % Recalibrated and synchronized sensor error.
         variability; % Intra-patient variability.
         pumpParamError;
+        dailyCarbsCountingError; % errors in carb counting which be applied in each day
         
         firstIteration = true;
     end
     
-    methods(Static)
+    methods (Static)
         function options = configure(className, lastOptions)
             if ~exist('lastOptions', 'var')
                 lastOptions = struct();
@@ -77,7 +78,7 @@ classdef HovorkaPatient < VirtualPatient
             formats(end, 1).style = 'listbox';
             formats(end, 1).format = 'text'; % Answer will give value shown in items, disable to get integer.
             formats(end, 1).items = {};
-            m = methods(className);
+            m = methods (className);
             for i = 1:numel(m)
                 startIndex = regexp(m{i}, '^patient[0-9]+$');
                 if startIndex == 1
@@ -88,6 +89,7 @@ classdef HovorkaPatient < VirtualPatient
             formats(end, 1).size = [75, 100];
             formats(end, 1).callback = @(hObj, ~, handles, k) ...
                 set(handles(k, 3), 'String', evalc(['help ', className, '.', hObj.String{hObj.Value}]));
+            
             
             prompt(end+1, :) = {'Type of glucose sensor noise', 'sensorNoiseType', []};
             formats(end+1, 1).type = 'list';
@@ -140,6 +142,15 @@ classdef HovorkaPatient < VirtualPatient
             
             prompt(end+1, :) = {'Automatically consume carbs when hypo.', 'useTreatments', []};
             formats(end+1, 1).type = 'check';
+            formats(end, 1).span = [1, 2];
+            
+            prompt(end+1, :) = {'Patient has non-optimal basal-bolus parameter', 'wrongPumpParam', []};
+            formats(end+1, 1).type = 'check';
+            formats(end, 1).span = [1, 2];
+
+            prompt(end+1, :) = {'Patient makes carb counting errors', 'carbsCountingError', []};
+            formats(end+1, 1).type = 'check';
+            formats(end, 1).span = [1, 2];
             
             prompt(end+1, :) = {'RNG for reproducibility (-1 for random value)', 'rngSeed', []};
             formats(end+1, 1).type = 'edit';
@@ -173,6 +184,8 @@ classdef HovorkaPatient < VirtualPatient
             this.opt.useTreatments = true;
             this.opt.wrongPumpParam = false;
             this.opt.pumpParamError = struct();
+            this.opt.carbsCountingError = false;
+            this.opt.dailyCarbsCountingError = struct();
             this.opt.RNGSeed = -1;
             
             if exist('options', 'var')
@@ -203,6 +216,9 @@ classdef HovorkaPatient < VirtualPatient
                     this.pumpParamError.bolus = 0.5 * 2 * (rand(1) - 0.5);
                 end
             end
+            
+            % Apply carbs counting errors
+            this.applyCarbsCountingErrors();
             
             % Initialize state.
             this.state = this.getInitialState();
@@ -259,6 +275,7 @@ classdef HovorkaPatient < VirtualPatient
                 1.0; ... % mmol/L
                 1.0; ... % mmol/L
                 ];
+            
         end
         
         function prop = getProperties(this)
@@ -325,6 +342,11 @@ classdef HovorkaPatient < VirtualPatient
                     this.variability.ka.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
                     this.variability.ke.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
                 end
+                
+                % Generate carbs counting error.
+                if ~this.firstIteration
+                    this.applyCarbsCountingErrors();
+                end
             end
             
             % Apply intra-variability.
@@ -372,6 +394,7 @@ classdef HovorkaPatient < VirtualPatient
             [~, Y] = ode15s(@(t, y) this.model(t, y, Ubasal), ...
                 [startTime, endTime], ...
                 this.state);
+            
             this.state = Y(end, :)';
             Um = 0;
             for m = 1:length(this.meals)
@@ -388,10 +411,12 @@ classdef HovorkaPatient < VirtualPatient
                         sensor_noise = 0.7 * (this.CGM.error + randn(1));
                         this.CGM.error = (10 / this.param.MCHO) * (this.CGM.epsilon + ...
                             this.CGM.lambda * sinh((sensor_noise - this.CGM.gamma)/this.CGM.delta));
+                        
                     case {'ar(1)', 'colored'}
                         phi = 0.8;
                         this.CGM.error = phi * this.CGM.error + ...
                             sqrt(1-phi^2) * this.opt.sensorNoiseValue * randn(1);
+                        
                     case 'mult'
                         this.CGM.error = this.opt.sensorNoiseValue * this.state(this.eGluInte) * randn(1);
                     case {'white', 'add'}
@@ -410,11 +435,11 @@ classdef HovorkaPatient < VirtualPatient
                 treats_ = this.mealPlan.getTreatment(max(startTime-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:startTime);
                 if sum(meals_.value) + sum(treats_) < 15 % if patient had or planing to have a meal
                     hypoThreshold = 2.8; % mmol/L.
-                    prolongedHypoThreshold = 3.7; % mmol/L.
+                    prolongedHypoThreshold = 3.3; % mmol/L.
                     prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
                     if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
                         this.addTreatment(startTime, 30);
-                    elseif this.state(this.eGluPlas) / this.param.Vg < hypoThreshold
+                    elseif all(this.stateHistory(this.eGluPlas, end-1:end)/this.param.Vg < hypoThreshold)
                         this.addTreatment(startTime, 15);
                     end
                 end
@@ -436,6 +461,11 @@ classdef HovorkaPatient < VirtualPatient
             if isfield(meal, 'announced')
                 meal.value = meal.announced .* meal.value;
                 meal.glycemicLoad = meal.announced .* meal.glycemicLoad;
+            end
+            
+            if this.opt.carbsCountingError
+                meal.value(meal.value > 0) = max(round(meal.value(meal.value > 0).* ...
+                    (1 + this.dailyCarbsCountingError(mod(time(meal.value > 0), 60*24)/(this.mealPlan.simulationStepSize)+1))), 0);
             end
         end
         
@@ -468,12 +498,14 @@ classdef HovorkaPatient < VirtualPatient
                     (-this.param.k12 * this.param.EGP0 * this.param.Se + (this.param.EGP0 - Fr - Fn) * this.param.Sd), ...
                     this.param.k12 * (this.param.EGP0 - Fn - Fr), ...
                     ]);
+                
                 syms x positive
                 S = vpasolve(-Fn ...
                     -Q10*this.param.St*x ...
                     +this.param.k12*(Q10 * this.param.St * x)/(this.param.k12 + this.param.Sd * x) ...
                     -Fr ...
                     +this.param.EGP0*exp(-this.param.Se*x) == 0, x, max(double(Slin)));
+                
                 
                 % Insulin plasma (mU/L).
                 if ~isempty(S) && isreal(double(S))
@@ -542,7 +574,7 @@ classdef HovorkaPatient < VirtualPatient
         end
     end
     
-    methods(Access = private)
+    methods (Access = private)
         function applyIntraVariability(this, t)
             alp = 0.3; % Filter parameter changes.
             
@@ -559,6 +591,28 @@ classdef HovorkaPatient < VirtualPatient
             this.variability.ke.val = (1 - alp) * this.variability.ke.val + alp * this.param.ke * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.ke.phase)/(this.variability.ke.period)));
         end
         
+        function applyCarbsCountingErrors(this)
+            if this.opt.carbsCountingError
+                this.dailyCarbsCountingError = nan(1440/this.mealPlan.simulationStepSize, 1);
+                if ~isempty(fieldnames(this.opt.dailyCarbsCountingError))
+                    for ccIdx = 1:length(this.opt.dailyCarbsCountingError.time)
+                        if ccIdx == length(this.opt.dailyCarbsCountingError.time)
+                            idxStart = mod(this.opt.dailyCarbsCountingError.time(end), 1440) / this.mealPlan.simulationStepSize + 1;
+                            idxEnd = mod(this.opt.dailyCarbsCountingError.time(1), 1440) / this.mealPlan.simulationStepSize;
+                            this.dailyCarbsCountingError(idxStart:end) = this.opt.dailyCarbsCountingError.value(end);
+                            this.dailyCarbsCountingError(1:idxEnd) = this.opt.dailyCarbsCountingError.value(end);
+                        else
+                            idxStart = mod(this.opt.dailyCarbsCountingError.time(ccIdx), 1440) / this.mealPlan.simulationStepSize + 1;
+                            idxEnd = mod(this.opt.dailyCarbsCountingError.time(ccIdx+1), 1440) / this.mealPlan.simulationStepSize;
+                            this.dailyCarbsCountingError(idxStart:idxEnd) = this.opt.dailyCarbsCountingError.value(ccIdx);
+                        end
+                    end
+                else % Choose random carb counting erros
+                    this.dailyCarbsCountingError = 0.15 * randn(1440/this.mealPlan.simulationStepSize, 1);
+                end
+            end
+        end
+        
         function Um = gut4CompDelayedModel(this, t, meal)
             Qm1 = (t - meal.time) * exp(-(t - meal.time)/meal.TauM1) / meal.TauM1^2;
             if t > (meal.time + meal.Delay)
@@ -573,6 +627,7 @@ classdef HovorkaPatient < VirtualPatient
         function Um = gut2CompModel(this, t, meal)
             Um = (1e6 / (this.param.w * this.param.MCHO)) * meal.Bio * meal.value * ...
                 (t - meal.time) * exp(-(t - meal.time)/meal.TauM) / meal.TauM^2;
+            
         end
         
         function dydt = model(this, t, y, u)
@@ -588,6 +643,7 @@ classdef HovorkaPatient < VirtualPatient
                 GluPlas = GluPlas + ...
                     (1e6 / (this.param.w * this.param.MCRGlu)) * this.glucagon(g).value * ...
                     (t - this.glucagon(g).time) * exp(-(t - this.glucagon(g).time)/this.param.TauGlu) / this.param.TauGlu^2;
+                
             end
             
             % Plasma insulin kinetics subsystem (mU/L).
@@ -610,8 +666,10 @@ classdef HovorkaPatient < VirtualPatient
                 -this.param.RCl * (y(this.eGluPlas) - this.param.RTh * this.param.Vg) * (y(this.eGluPlas) > this.param.RTh * this.param.Vg) ...
                 +this.variability.EGP0.val * (exp(-y(this.eInsActE)) + exp(-1/(GluPlas * this.param.TGlu))) ...
                 +Um;
+            
             dydt(this.eGluComp) = y(this.eInsActT) * y(this.eGluPlas) ...
                 -(this.variability.k12.val + y(this.eInsActD)) * y(this.eGluComp);
+            
             
             % Glucose sensor (mmol/L).
             dydt(this.eGluInte) = (y(this.eGluPlas) / this.param.Vg - y(this.eGluInte)) / this.param.TauS;

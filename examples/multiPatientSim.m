@@ -17,6 +17,8 @@ optPatient.mealVariability = 0.5;
 optPatient.sensorNoiseType = 'AR(1)';
 optPatient.sensorNoiseValue = 0.07;
 optPatient.useTreatments = true;
+optPatient.carbsCountingError = true;
+optPatient.wrongPumpParam = true;
 optPatient.randomInitialConditions = true;
 
 % Define a structure holding options for RandomMealPlan
