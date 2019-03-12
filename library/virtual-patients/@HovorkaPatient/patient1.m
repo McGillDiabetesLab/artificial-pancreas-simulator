@@ -23,8 +23,8 @@ this.param.ka = 0.018; % Insulin absorption rate (1/min).
 this.param.ke = 0.14; % Insulin elimination rate (1/min).
 
 % Meal submodel.
-this.param.Bio = 0.9; % Bioavailability of CHO (%).
-this.param.TauM = 1 / 0.028; % Time-to-maximum of CHO absorption (min).
+this.param.Bio = 0.8; % Bioavailability of CHO (%).
+this.param.TauM = 1 / 0.025; % Time-to-maximum of CHO absorption (min).
 
 % Glucagon submodel.
 this.param.TauGlu = 19; % Time-to-maximum of glucagon absorption (min).

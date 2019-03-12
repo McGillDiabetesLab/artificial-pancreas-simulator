@@ -36,8 +36,8 @@ while iter < 1e2 && resampleValidParam
     this.param.ke = lognrnd(log(0.14), 0.2); % Insulin elimination rate (1/min).
     
     % Meal submodel.
-    this.param.Bio = 0.9; % Bioavailability of CHO (%).
-    this.param.TauM = 1 / lognrnd(log(0.028), 0.2); % Time-to-maximum of CHO absorption (min).
+    this.param.Bio = 0.8; % Bioavailability of CHO (%).
+    this.param.TauM = 1 / lognrnd(log(0.025), 0.2); % Time-to-maximum of CHO absorption (min).
     
     % Glucagon submodel.
     this.param.TauGlu = lognrnd(log(19), 0.2); % Time-to-maximum of glucagon absorption (min).

@@ -91,6 +91,7 @@ classdef HovorkaPatient < VirtualPatient
                 set(handles(k, 3), 'String', evalc(['help ', className, '.', hObj.String{hObj.Value}]));
             
             
+            
             prompt(end+1, :) = {'Type of glucose sensor noise', 'sensorNoiseType', []};
             formats(end+1, 1).type = 'list';
             formats(end, 1).format = 'text';
@@ -147,7 +148,7 @@ classdef HovorkaPatient < VirtualPatient
             prompt(end+1, :) = {'Patient has non-optimal basal-bolus parameter', 'wrongPumpParam', []};
             formats(end+1, 1).type = 'check';
             formats(end, 1).span = [1, 2];
-
+            
             prompt(end+1, :) = {'Patient makes carb counting errors', 'carbsCountingError', []};
             formats(end+1, 1).type = 'check';
             formats(end, 1).span = [1, 2];
@@ -270,11 +271,13 @@ classdef HovorkaPatient < VirtualPatient
                 1.0; ... % 1/min
                 1.0; ... % 1/min
                 1.0; ... % no-units
+                60 / this.param.Vg; ... umol/kg/min -> mmol/L
                 1 / this.param.Vg; ... % umol/kg -> mmol/L
                 1 / this.param.Vg; ... % umol/kg -> mmol/L
                 1.0; ... % mmol/L
                 1.0; ... % mmol/L
                 ];
+            
             
         end
         
@@ -361,17 +364,20 @@ classdef HovorkaPatient < VirtualPatient
                 this.meals(end).time = startTime;
                 if meal.glycemicLoad < 10
                     this.meals(end).gutAbsorptionModel = @this.gut2CompModel;
-                    this.meals(end).TauM = max(min(this.param.TauM.*(1 + this.opt.mealVariability * randn(1)), 75), 25);
+                    this.meals(end).TauM = max(min(this.param.TauM.*(1 + this.opt.mealVariability * randn(1)), 55), 15);
+                    this.meals(end).Delay = 0;
                 else
                     this.meals(end).gutAbsorptionModel = @this.gut4CompDelayedModel;
-                    this.meals(end).TauM1 = max(min(this.param.TauM*0.8*(1 + this.opt.mealVariability * randn(1)), 75), 25);
-                    this.meals(end).TauM2 = max(min(this.param.TauM*1.5*(1 + this.opt.mealVariability * randn(1)), 75), 25);
-                    if this.opt.mealVariability > 0.0
-                        this.meals(end).Delay = 10 + 20 * rand(1);
-                        this.meals(end).Prop = 0.5 + 0.4 * rand(1);
+                    this.meals(end).TauM1 = max(min(this.param.TauM*0.8*(1 + this.opt.mealVariability * randn(1)), 55), 15);
+                    this.meals(end).TauM2 = max(min(this.param.TauM*1.3*(1 + this.opt.mealVariability * randn(1)), 75), 25);
+                    if this.opt.mealVariability > 0.2
+                        this.meals(end).Delay1 = 20 * rand(1);
+                        this.meals(end).Delay2 = 10 + 30 * rand(1);
+                        this.meals(end).Prop = 0.3 + 0.4 * rand(1);
                     else
-                        this.meals(end).Delay = 10;
-                        this.meals(end).Prop = 0.7;
+                        this.meals(end).Delay1 = 0;
+                        this.meals(end).Delay2 = 20;
+                        this.meals(end).Prop = 0.5;
                     end
                 end
                 if this.opt.mealVariability > 0.2
@@ -395,6 +401,7 @@ classdef HovorkaPatient < VirtualPatient
                 [startTime, endTime], ...
                 this.state);
             
+            
             this.state = Y(end, :)';
             Um = 0;
             for m = 1:length(this.meals)
@@ -412,10 +419,12 @@ classdef HovorkaPatient < VirtualPatient
                         this.CGM.error = (10 / this.param.MCHO) * (this.CGM.epsilon + ...
                             this.CGM.lambda * sinh((sensor_noise - this.CGM.gamma)/this.CGM.delta));
                         
+                        
                     case {'ar(1)', 'colored'}
                         phi = 0.8;
                         this.CGM.error = phi * this.CGM.error + ...
                             sqrt(1-phi^2) * this.opt.sensorNoiseValue * randn(1);
+                        
                         
                     case 'mult'
                         this.CGM.error = this.opt.sensorNoiseValue * this.state(this.eGluInte) * randn(1);
@@ -466,6 +475,7 @@ classdef HovorkaPatient < VirtualPatient
             if this.opt.carbsCountingError
                 meal.value(meal.value > 0) = max(round(meal.value(meal.value > 0).* ...
                     (1 + this.dailyCarbsCountingError(mod(time(meal.value > 0), 60*24)/(this.mealPlan.simulationStepSize)+1))), 0);
+                
             end
         end
         
@@ -499,12 +509,14 @@ classdef HovorkaPatient < VirtualPatient
                     this.param.k12 * (this.param.EGP0 - Fn - Fr), ...
                     ]);
                 
+                
                 syms x positive
                 S = vpasolve(-Fn ...
                     -Q10*this.param.St*x ...
                     +this.param.k12*(Q10 * this.param.St * x)/(this.param.k12 + this.param.Sd * x) ...
                     -Fr ...
                     +this.param.EGP0*exp(-this.param.Se*x) == 0, x, max(double(Slin)));
+                
                 
                 
                 % Insulin plasma (mU/L).
@@ -614,9 +626,13 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function Um = gut4CompDelayedModel(this, t, meal)
-            Qm1 = (t - meal.time) * exp(-(t - meal.time)/meal.TauM1) / meal.TauM1^2;
-            if t > (meal.time + meal.Delay)
-                Qm2 = (t - meal.time) * exp(-(t - meal.time - meal.Delay)/meal.TauM2) / meal.TauM2^2;
+            if t > (meal.time + meal.Delay1)
+                Qm1 = (t - meal.time - meal.Delay1) * exp(-(t - meal.time - meal.Delay1)/meal.TauM1) / meal.TauM1^2;
+            else
+                Qm1 = 0;
+            end
+            if t > (meal.time + meal.Delay2)
+                Qm2 = (t - meal.time - meal.Delay2) * exp(-(t - meal.time - meal.Delay2)/meal.TauM2) / meal.TauM2^2;
             else
                 Qm2 = 0;
             end
@@ -625,9 +641,13 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function Um = gut2CompModel(this, t, meal)
-            Um = (1e6 / (this.param.w * this.param.MCHO)) * meal.Bio * meal.value * ...
-                (t - meal.time) * exp(-(t - meal.time)/meal.TauM) / meal.TauM^2;
-            
+            if t > (meal.time + meal.Delay)
+                Um = (1e6 / (this.param.w * this.param.MCHO)) * meal.Bio * meal.value * ...
+                    (t - meal.time - meal.Delay) * exp(-(t - meal.time - meal.Delay)/meal.TauM) / meal.TauM^2;
+                
+            else
+                Um = 0;
+            end
         end
         
         function dydt = model(this, t, y, u)
@@ -643,6 +663,7 @@ classdef HovorkaPatient < VirtualPatient
                 GluPlas = GluPlas + ...
                     (1e6 / (this.param.w * this.param.MCRGlu)) * this.glucagon(g).value * ...
                     (t - this.glucagon(g).time) * exp(-(t - this.glucagon(g).time)/this.param.TauGlu) / this.param.TauGlu^2;
+                
                 
             end
             
@@ -667,8 +688,10 @@ classdef HovorkaPatient < VirtualPatient
                 +this.variability.EGP0.val * (exp(-y(this.eInsActE)) + exp(-1/(GluPlas * this.param.TGlu))) ...
                 +Um;
             
+            
             dydt(this.eGluComp) = y(this.eInsActT) * y(this.eGluPlas) ...
                 -(this.variability.k12.val + y(this.eInsActD)) * y(this.eGluComp);
+            
             
             
             % Glucose sensor (mmol/L).
@@ -684,6 +707,7 @@ classdef HovorkaPatient < VirtualPatient
             this.meals(end).time = time;
             this.meals(end).gutAbsorptionModel = @this.gut2CompModel;
             this.meals(end).TauM = 20;
+            this.meals(end).Delay = 0;
             this.meals(end).Bio = this.param.Bio;
         end
     end
