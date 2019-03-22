@@ -60,7 +60,7 @@ classdef HovorkaPatient < VirtualPatient
                 lastOptions.initialGlucose = 6.5;
                 lastOptions.basalGlucose = 6.5;
                 lastOptions.useTreatments = true;
-                lastOptions.rngSeed = -1;
+                lastOptions.RNGSeed = -1;
             end
             
             dlgTitle = 'Configure Hovorka Patient';
@@ -153,7 +153,7 @@ classdef HovorkaPatient < VirtualPatient
             formats(end+1, 1).type = 'check';
             formats(end, 1).span = [1, 2];
             
-            prompt(end+1, :) = {'RNG for reproducibility (-1 for random value)', 'rngSeed', []};
+            prompt(end+1, :) = {'RNG for reproducibility (-1 for random value)', 'RNGSeed', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'float';
             formats(end, 1).size = 200;
