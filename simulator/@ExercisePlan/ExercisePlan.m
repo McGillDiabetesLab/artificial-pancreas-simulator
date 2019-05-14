@@ -73,6 +73,16 @@ classdef ExercisePlan < matlab.mixin.Copyable
             end
             options = configureName(className, lastOptions);
         end
+         
+        function out = typesOfExercise
+            %TYPESOFEXERCISE
+            % List acceptable type of exercises
+            out = {...
+                'aerobic',...
+                'anaerobic', ...
+                'resistance'
+                };
+        end
     end
     
     methods(Abstract)

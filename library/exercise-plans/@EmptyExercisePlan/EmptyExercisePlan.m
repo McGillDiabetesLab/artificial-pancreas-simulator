@@ -6,10 +6,9 @@ classdef EmptyExercisePlan < ExercisePlan
         end
         
         function exercise = getExercise(this, time)
-            exercise.startTime = time;
-            exercise.endTime = time;
+            exercise.duration = zeros(size(time));
             exercise.intensity = zeros(size(time));
-            exercise.value = zeros(size(time));
+            exercise.type = zeros(size(time));
             exercise.announced = ones(size(time));
         end
     end

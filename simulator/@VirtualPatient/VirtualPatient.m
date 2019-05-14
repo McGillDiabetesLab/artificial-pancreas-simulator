@@ -142,6 +142,10 @@ classdef VirtualPatient < matlab.mixin.Copyable
             %       of the meal on the patient.
             
             meal = this.mealPlan.getMeal(time);
+            if isfield(meal, 'announced')
+                meal.value = meal.announced .* meal.value;
+                meal.glycemicLoad = meal.announced .* meal.glycemicLoad;
+            end
         end
         
         function value = getTreatment(this, time)

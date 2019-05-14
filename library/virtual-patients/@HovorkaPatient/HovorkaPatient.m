@@ -438,20 +438,7 @@ classdef HovorkaPatient < VirtualPatient
             this.state(this.eGluMeas) = this.state(this.eGluInte) + this.CGM.error;
             
             % Add treatment.
-            if this.opt.useTreatments
-                meals_ = this.mealPlan.getMeal(max(startTime-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:startTime+20);
-                treats_ = this.mealPlan.getTreatment(max(startTime-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:startTime);
-                if sum(meals_.value) + sum(treats_) < 15 % if patient had or planing to have a meal
-                    hypoThreshold = 2.8; % mmol/L.
-                    prolongedHypoThreshold = 3.3; % mmol/L.
-                    prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
-                    if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
-                        this.addTreatment(startTime, 30);
-                    elseif all(this.stateHistory(this.eGluPlas, end-1:end)/this.param.Vg < hypoThreshold)
-                        this.addTreatment(startTime, 15);
-                    end
-                end
-            end
+            this.processTreatmentLogic(startTime);
             
             % Save states in history.
             this.stateHistory(:, 1:end-1) = this.stateHistory(:, 2:end);
@@ -533,6 +520,23 @@ classdef HovorkaPatient < VirtualPatient
     end
     
     methods (Access = private)
+        function processTreatmentLogic(this, t)
+            if this.opt.useTreatments
+                meals_ = this.mealPlan.getMeal(max(t-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:t+20);
+                treats_ = this.mealPlan.getTreatment(max(t-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:t);
+                if sum(meals_.value) + sum(treats_) < 15 % if patient had or planing to have a meal
+                    hypoThreshold = 2.8; % mmol/L.
+                    prolongedHypoThreshold = 3.3; % mmol/L.
+                    prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
+                    if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
+                        this.addTreatment(t, 30);
+                    elseif all(this.stateHistory(this.eGluPlas, end-1:end)/this.param.Vg < hypoThreshold)
+                        this.addTreatment(t, 15);
+                    end
+                end
+            end
+        end
+        
         function applyIntraVariability(this, t)
             alp = 0.3; % Filter parameter changes.
             
