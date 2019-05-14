@@ -1,11 +1,11 @@
 classdef MDITherapy < InfusionController
     %MDITHERAPY Open loop therapy with multiple daily injections.
     
-    properties(GetAccess = public, SetAccess = immutable)
+    properties (GetAccess = public, SetAccess = immutable)
         glucoseHistorySize = 100;
     end
     
-    properties(GetAccess = public, SetAccess = private)
+    properties (GetAccess = public, SetAccess = private)
         opt; % Options configured by the user.
         
         glucoseHistory;
@@ -14,7 +14,7 @@ classdef MDITherapy < InfusionController
         lastBolusTime;
     end
     
-    methods(Static)
+    methods (Static)
         function options = configure(className, lastOptions)
             
             defaultAns = struct();
@@ -94,7 +94,7 @@ classdef MDITherapy < InfusionController
         end
     end
     
-    methods(Access = public)
+    methods (Access = public)
         function this = MDITherapy(simulationStartTime, simulationDuration, simulationStepSize, patient, options)
             this@InfusionController(simulationStartTime, simulationDuration, simulationStepSize, patient);
             
@@ -121,11 +121,13 @@ classdef MDITherapy < InfusionController
             % Customize ISF per patient if useFixedISF is false.
             if ~this.opt.useFixedISF
                 prop = this.patient.getProperties();
-                if isfield(prop, 'TDD')
+                if isfield(prop, 'ISF')
+                    this.opt.insulinSensitivity = prop.ISF;
+                elseif isfield(prop, 'TDD')
                     this.opt.insulinSensitivity = 110.0 / prop.TDD;
+                    this.opt.insulinSensitivity = min(this.opt.insulinSensitivity, 7.5);
+                    this.opt.insulinSensitivity = max(this.opt.insulinSensitivity, 0.5);
                 end
-                this.opt.insulinSensitivity = min(this.opt.insulinSensitivity, 7.0);
-                this.opt.insulinSensitivity = max(this.opt.insulinSensitivity, 0.5);
             end
             
             % Initialize state.
@@ -177,12 +179,12 @@ classdef MDITherapy < InfusionController
                     
                     if this.opt.correctionBolus
                         correctionBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity;
-                        infusions.bolusInsulin = round(2*( ...
+                        infusions.bolusInsulin = floor(20*( ...
                             meal.value / carbFactor + ...
-                            max(correctionBolus, 0)), 1) / 2;
+                            max(correctionBolus, 0))) / 20;
                     else
-                        infusions.bolusInsulin = round(2*( ...
-                            meal.value / carbFactor), 1) / 2;
+                        infusions.bolusInsulin = floor(20*( ...
+                            meal.value / carbFactor)) / 20;
                     end
                     
                     if infusions.bolusInsulin < 0

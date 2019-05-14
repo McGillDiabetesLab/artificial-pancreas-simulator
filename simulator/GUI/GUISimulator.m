@@ -1,26 +1,26 @@
-function varargout = GUI(varargin)
-%GUI MATLAB code file for GUI.fig
-%      GUI, by itself, creates a new GUI or raises the existing
+function varargout = GUISimulator(varargin)
+%GUISimulator MATLAB code file for GUISimulator.fig
+%      GUISimulator, by itself, creates a new GUISimulator or raises the existing
 %      singleton*.
 %
-%      H = GUI returns the handle to a new GUI or the handle to
+%      H = GUISimulator returns the handle to a new GUISimulator or the handle to
 %      the existing singleton*.
 %
-%      GUI('Property','Value',...) creates a new GUI using the
+%      GUISimulator('Property','Value',...) creates a new GUISimulator using the
 %      given property value pairs. Unrecognized properties are passed via
 %      varargin to GUI_OpeningFcn.  This calling syntax produces a
 %      warning when there is an existing singleton*.
 %
-%      GUI('CALLBACK') and GUI('CALLBACK',hObject,...) call the
-%      local function named CALLBACK in GUI.M with the given input
+%      GUISimulator('CALLBACK') and GUISimulator('CALLBACK',hObject,...) call the
+%      local function named CALLBACK in GUISimulator.M with the given input
 %      arguments.
 %
-%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
+%      *See GUISimulator Options on GUIDE's Tools menu.  Choose "GUISimulator allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help GUI
+% Edit the above text to modify the response to help GUISimulator
 
 % Last Modified by GUIDE v2.5 21-Nov-2017 00:58:58
 
@@ -44,7 +44,7 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before GUI is made visible.
+% --- Executes just before GUISimulator is made visible.
 function GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
@@ -53,13 +53,13 @@ function GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   unrecognized PropertyName/PropertyValue pairs from the
 %            command line (see VARARGIN)
 
-% Choose default command line output for GUI
+% Choose default command line output for GUISimulator
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes GUI wait for user response (see UIRESUME)
+% UIWAIT makes GUISimulator wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 

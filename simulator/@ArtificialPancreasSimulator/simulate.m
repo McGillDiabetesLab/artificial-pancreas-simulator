@@ -31,7 +31,11 @@ stepsPerPatient = this.options.simulationDuration ./ this.options.simulationStep
 if nargin < 2 && this.options.parallelExecution
     packetSize = 32;
     totalSteps = numel(this.patients) .* stepsPerPatient;
-    progressbar = parfor_progressbar(totalSteps, 'Simulation in progress...');
+    if this.options.progressBar
+        progressbar = parfor_progressbar(totalSteps, 'Simulation in progress...');
+    else
+        progressbar = [];
+    end
     for parallelIndex = 1:ceil(numel(this.patients)./packetSize)
         startIndex = (parallelIndex - 1) .* packetSize + 1;
         endIndex = min(parallelIndex.*packetSize, numel(this.patients));
@@ -40,15 +44,23 @@ if nargin < 2 && this.options.parallelExecution
                 simulatePatient(this, progressbar, i);
         end
     end
-    progressbar.close();
+    if this.options.progressBar
+        progressbar.close();
+    end
 else
     totalSteps = numel(patientIndexes) .* stepsPerPatient;
-    progressbar = for_progressbar(totalSteps, 'Simulation in progress...');
+    if this.options.progressBar
+        progressbar = for_progressbar(totalSteps, 'Simulation in progress...');
+    else
+        progressbar = [];
+    end
     for i = patientIndexes(:)'
         [patients{i}, primaryControllers{i}, secondaryControllers{i}, resultsManagers{i}] = ...
             simulatePatient(this, progressbar, i);
     end
-    progressbar.close();
+    if this.options.progressBar
+        progressbar.close();
+    end
 end
 
 this.patients = patients;
@@ -96,7 +108,9 @@ while time < this.options.simulationStartTime + this.options.simulationDuration
     
     patient.updateState(time, time+this.options.simulationStepSize, primaryInfusions);
     time = time + this.options.simulationStepSize;
-    progressbar.iterate(1);
+    if ~isempty(progressbar)
+        progressbar.iterate(1);
+    end
     
     glucoseMeasurement = patient.getGlucoseMeasurement();
     resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);

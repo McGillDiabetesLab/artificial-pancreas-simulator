@@ -25,6 +25,10 @@ classdef SimulatorOptions
         %   to false.
         parallelExecution;
         
+        %PROGRESSBAR  progree bar flag (optional).
+        %   An optional flag that turns on the progree bar.
+        progressBar;
+        
         %INTERACTIVESIMULATION  Interactive simulation flag (optional).
         %   An optional flag that turns on interactive simulation. Defaults
         %   to false.

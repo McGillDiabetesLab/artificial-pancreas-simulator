@@ -126,6 +126,10 @@ classdef RandomMealPlan < MealPlan
                 dailyCarbsMin = 40;
             end
             
+            if exist('options', 'var') && isfield(options, 'RNGSeed')
+                rng(options.RNGSeed);
+            end
+            
             if exist('options', 'var') && isfield(options, 'plan')
                 plan = options.plan;
             else
@@ -197,6 +201,9 @@ classdef RandomMealPlan < MealPlan
                                 Index = floor(simulationStartTime/simulationStepSize) + 1;
                             end
                             meals_.values(Index) = round(plan.(mealNames{mnIdx}).value(1)+diff(plan.(mealNames{mnIdx}).value)*rand(1));
+                            if meals_.values(Index) < 5 % do not count meals less than 5g
+                                meals_.values(Index) = 0;
+                            end
                             meals_.glycemicLoads(Index) = plan.(mealNames{mnIdx}).glycemicLoad;
                             meals_.announced(Index) = plan.(mealNames{mnIdx}).announcedFraction > rand(1);
                             totalCarbs = totalCarbs + meals_.values(Index);

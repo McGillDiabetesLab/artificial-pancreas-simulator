@@ -1,11 +1,11 @@
 classdef PumpTherapy < InfusionController
     %PUMPTHERAPY  Open loop therapy with a pump.
     
-    properties(GetAccess = public, SetAccess = immutable)
+    properties (GetAccess = public, SetAccess = immutable)
         glucoseHistorySize = 100;
     end
     
-    properties(GetAccess = public, SetAccess = private)
+    properties (GetAccess = public, SetAccess = private)
         opt; % Options configured by the user.
         
         glucoseHistory;
@@ -15,10 +15,10 @@ classdef PumpTherapy < InfusionController
         bolusHistory;
         
         pumpShutOff;
-        lastBolusTime;
+        lastBolusTime;        
     end
     
-    methods(Static)
+    methods (Static)
         function options = configure(className, lastOptions)
             
             defaultAns = struct();
@@ -161,7 +161,7 @@ classdef PumpTherapy < InfusionController
         end
     end
     
-    methods(Access = public)
+    methods (Access = public)
         function this = PumpTherapy(simulationStartTime, simulationDuration, simulationStepSize, patient, options)
             this@InfusionController(simulationStartTime, simulationDuration, simulationStepSize, patient);
             
@@ -177,10 +177,11 @@ classdef PumpTherapy < InfusionController
             this.opt.hypoPumpShutoff = false;
             this.opt.dGlucosePumpShutoffThresh = 0.05;
             this.opt.correctionBolus = true;
-            this.opt.corrBolusRules = struct();
+            this.opt.corrBolusRules = struct([]);
             this.opt.corrBolusRules(1).name = 'Default';
             this.opt.corrBolusRules(1).glucoseThresh = 15.0;
             this.opt.corrBolusRules(1).dGlucoseThresh = 0.0;
+            this.opt.temporalBasal = struct('time', [], 'type', [], 'value', [], 'duration', []);
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -192,16 +193,6 @@ classdef PumpTherapy < InfusionController
             end
             
             this.name = this.opt.name;
-            
-            % Customize ISF per patient if useFixedISF is false.
-            if ~this.opt.useFixedISF
-                prop = this.patient.getProperties();
-                if isfield(prop, 'TDD')
-                    this.opt.insulinSensitivity = 110.0 / prop.TDD;
-                end
-                this.opt.insulinSensitivity = min(this.opt.insulinSensitivity, 7.0);
-                this.opt.insulinSensitivity = max(this.opt.insulinSensitivity, 0.5);
-            end
             
             % Initialize state.
             this.glucoseHistory = nan(1, this.glucoseHistorySize);
@@ -217,7 +208,7 @@ classdef PumpTherapy < InfusionController
             this.pumpShutOff = false;
             
             % Initialize last time of bolus
-            this.lastBolusTime = -inf;
+            this.lastBolusTime = -inf;            
         end
         
         function infusions = getInfusions(this, time)
@@ -268,6 +259,31 @@ classdef PumpTherapy < InfusionController
             % Get patient properties.
             prop = this.patient.getProperties();
             
+            % Compute ISF
+            if ~this.opt.useFixedISF
+                if isfield(prop, 'insulinSensitivity')
+                    ISFs = prop.insulinSensitivity.value;
+                    idx = find(prop.insulinSensitivity.time <= mod(time, 24*60), 1, 'last');
+                    if ~isempty(idx)
+                        ISF = ISFs(idx);
+                    else
+                        ISF = ISFs(end);
+                    end
+                elseif isfield(prop, 'TDD')
+                    ISF = 110.0 / prop.TDD;
+                    ISF = min(ISF, 7.5);
+                    ISF = max(ISF, 0.5);
+                end
+            else
+                ISF = this.opt.insulinSensitivity;
+            end
+            
+            if isfield(prop, 'targetGlucose')
+                targetGlucose = prop.targetGlucose;
+            else
+                targetGlucose = this.opt.targetGlucose;
+            end
+            
             % Compute basal.
             if isfield(prop, 'pumpBasals')
                 pumpBasals = prop.pumpBasals.value;
@@ -279,6 +295,19 @@ classdef PumpTherapy < InfusionController
                 end
             else % Use a default basal.
                 Ub = 1.0; % U/h.
+            end
+            if ~isempty(this.opt.temporalBasal.time)
+                idx = find(this.opt.temporalBasal.time <= mod(time, 24*60), 1, 'last');
+                if ~isempty(idx)
+                    if time < this.opt.temporalBasal.time(idx) + this.opt.temporalBasal.duration(idx)
+                        switch lower(this.opt.temporalBasal.type{idx})
+                            case 'rate'
+                                Ub = this.opt.temporalBasal.value(idx);
+                            case 'percent'
+                                Ub = Ub*this.opt.temporalBasal.value(idx);
+                        end
+                    end
+                end
             end
             infusions.basalInsulin = round(Ub, 2);
             
@@ -329,7 +358,7 @@ classdef PumpTherapy < InfusionController
                     end
                     
                     if this.opt.correctionBolus
-                        correctionBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity;
+                        correctionBolus = (glucose - targetGlucose) / ISF;
                         infusions.bolusInsulin = round(2*( ...
                             meal.value / carbFactor + ...
                             correctionBolus), 1) / 2;
@@ -356,7 +385,7 @@ classdef PumpTherapy < InfusionController
                     end
                     
                     if correctionBolusConditions
-                        corrBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity - ...
+                        corrBolus = (glucose - targetGlucose) / ISF - ...
                             insulinOnBoard;
                         
                         if corrBolus > 0
@@ -382,7 +411,7 @@ classdef PumpTherapy < InfusionController
         end
     end
     
-    methods(Access = private)
+    methods (Access = private)
         
         function iob = scalableExpIOB(this, t, tp, td)
             %SCALABLEEXPIOB

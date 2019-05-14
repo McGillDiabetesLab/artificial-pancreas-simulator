@@ -1,4 +1,4 @@
-function patient0(this)
+function patientRandom(this)
 % Patient 0 has a random set of parameters chosen around
 % the mean Hovorka parameter.
 % [1] M. E. Wilinska et al., "Simulation models for in silico testing of
@@ -53,7 +53,7 @@ while iter < 1e2 && resampleValidParam
     this.param.MCHO = 180.1577; % Molecular wight of glucose (g/mol).
     
     % Validate parameters
-    Gs0 = 6.5;
+    Gs0 = this.param.GBasal;
     Q10 = Gs0 * this.param.Vg;
     
     Fn = Q10 * (this.param.F01 / 0.85) / (Q10 + this.param.Vg);
@@ -79,19 +79,22 @@ while iter < 1e2 && resampleValidParam
     end
     
     % Basal insulin.
-    Ub = 60 * Ip0 * this.param.ke / (1e6 / (this.param.Vi * this.param.w));
+    this.param.Ub = round(2*60*Ip0*this.param.ke/(1e6 / (this.param.Vi * this.param.w)), 1) / 2;
     
-    if Ub > 2.2 || Ub < 0.1
+    if this.param.Ub > 2.2 || this.param.Ub < 0.1
         resampleValidParam = true;
     end
     
     % Carb factor.
-    meanCarbF = (this.param.MCHO * (0.4 * max(this.param.St, 16e-4) + 0.6 * min(max(this.param.Sd, 3e-4), 7e-4)) * 5.0 * this.param.Vg) / (this.param.ke * this.param.Vi); % g/U.
+    this.param.carbF = (this.param.MCHO * (0.4 * max(this.param.St, 16e-4) + 0.6 * min(max(this.param.Sd, 3e-4), 7e-4)) * 5.0 * this.param.Vg) / (this.param.ke * this.param.Vi); % g/U.
     
-    if meanCarbF > 24 || meanCarbF < 2
+    if this.param.carbF > 24 || this.param.carbF < 2
         resampleValidParam = true;
     end
 end
+
+% Approximate TDD.
+this.param.TDD = min(max(round(this.param.Ub*24+200/this.param.carbF, 2), 10), 110);
 
 if iter >= 1e2
     warning('Couldn''t sample valid parameters!');

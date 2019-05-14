@@ -166,6 +166,11 @@ if isempty(this.options.parallelExecution)
     this.options.parallelExecution = false;
 end
 
+%% Configure progress bar.
+if isempty(this.options.progressBar)
+    this.options.progressBar = true;
+end
+
 %% Configure interactive simulation.
 if isempty(this.options.interactiveSimulation)
     this.options.interactiveSimulation = false;

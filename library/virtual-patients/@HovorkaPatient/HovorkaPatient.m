@@ -52,7 +52,7 @@ classdef HovorkaPatient < VirtualPatient
             if ~exist('lastOptions', 'var')
                 lastOptions = struct();
                 lastOptions.name = className;
-                lastOptions.patient = {'patient1'};
+                lastOptions.patient = {'patientAvg'};
                 lastOptions.sensorNoiseType = {'none'};
                 lastOptions.sensorNoiseValue = 0.0;
                 lastOptions.intraVariability = 0.0;
@@ -68,7 +68,7 @@ classdef HovorkaPatient < VirtualPatient
             prompt = {};
             formats = {};
             
-            prompt(end+1, :) = {'Patient name:', 'name', []};
+            prompt(end+1, :) = {'Patient Name:', 'name', []};
             formats(end+1, 1).type = 'edit';
             formats(end, 1).format = 'text';
             formats(end, 1).size = 200; % Automatically assign the height.
@@ -80,17 +80,16 @@ classdef HovorkaPatient < VirtualPatient
             formats(end, 1).items = {};
             m = methods (className);
             for i = 1:numel(m)
-                startIndex = regexp(m{i}, '^patient[0-9]+$');
+                startIndex = regexp(m{i}, '^patient[\w]+$');
                 if startIndex == 1
                     formats(end, 1).items{end+1} = m{i};
                 end
             end
             formats(end, 1).limits = [1, 1]; % One-select.
-            formats(end, 1).size = [75, 100];
+            formats(end, 1).size = [150, 100];
             formats(end, 1).callback = @(hObj, ~, handles, k) ...
                 set(handles(k, 3), 'String', evalc(['help ', className, '.', hObj.String{hObj.Value}]));
-            
-            
+            formats(end, 1).span = [1, 2];
             
             prompt(end+1, :) = {'Type of glucose sensor noise', 'sensorNoiseType', []};
             formats(end+1, 1).type = 'list';
@@ -175,12 +174,14 @@ classdef HovorkaPatient < VirtualPatient
             % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
-            this.opt.patient = {'patient1'};
+            this.opt.patient = {'patientAvg'};
             this.opt.sensorNoiseType = 'none';
             this.opt.sensorNoiseValue = 0;
             this.opt.intraVariability = 0.0;
             this.opt.mealVariability = 0.0;
             this.opt.initialGlucose = 6.5;
+            this.opt.initialInsulinOnBoard = 0.0;
+            this.opt.initialState = [];
             this.opt.basalGlucose = 6.5;
             this.opt.useTreatments = true;
             this.opt.wrongPumpParam = false;
@@ -201,11 +202,28 @@ classdef HovorkaPatient < VirtualPatient
             % Set patient name.
             this.name = this.opt.name;
             
-            % Generate patient parameter.
             if this.opt.RNGSeed > 0
                 rng(this.opt.RNGSeed);
             end
+            
+            % Basal Glucose (mmol/L).
+            if this.opt.basalGlucose < 0
+                this.param.GBasal = 6.5 + 1.0 * randn(1);
+                while this.param.GBasal < 5 || this.param.GBasal > 8
+                    this.param.GBasal = 6.5 + 1.0 * randn(1);
+                end
+            else
+                this.param.GBasal = this.opt.basalGlucose;
+            end
+            
+            % Generate patient parameter.
             eval(['this.', this.opt.patient{1}]);
+            
+            % Set patient parameters.
+            this.param.carbFactors.value = this.param.carbF;
+            this.param.carbFactors.time = 0;
+            this.param.pumpBasals.value = this.param.Ub;
+            this.param.pumpBasals.time = 0;
             
             % Generate pump parameter error.
             if this.opt.wrongPumpParam
@@ -229,13 +247,6 @@ classdef HovorkaPatient < VirtualPatient
             % Set patient basal insulin rates.
             this.param.pumpBasals.value = round(this.param.Ub, 2);
             this.param.pumpBasals.time = 0;
-            
-            % Compute an approximation of patient carb factor.
-            meanCarbF = (this.param.MCHO * (0.4 * max(this.param.St, 16e-4) + 0.6 * min(max(this.param.Sd, 3e-4), 12e-4)) * this.opt.basalGlucose * this.param.Vg) / (this.param.ke * this.param.Vi); % g/U.
-            this.param.carbFactors.value = min(max(round(2*[meanCarbF, meanCarbF, meanCarbF])/2, 2), 25);
-            this.param.carbFactors.time = [7; 12; 17] * 60;
-            
-            this.param.TDD = min(max(round(this.param.Ub*24+200/meanCarbF, 2), 10), 110);
             
             % Initialize sensor model.
             this.CGM.lambda = 15.96; % Johnson parameter of recalibrated and synchronized sensor error.
@@ -277,8 +288,6 @@ classdef HovorkaPatient < VirtualPatient
                 1.0; ... % mmol/L
                 1.0; ... % mmol/L
                 ];
-            
-            
         end
         
         function prop = getProperties(this)
@@ -321,34 +330,29 @@ classdef HovorkaPatient < VirtualPatient
                 % Add intra-variability.
                 if this.opt.intraVariability > 0
                     % Reset intra-patient variability.
-                    this.variability.EGP0.phase = 2 * 60 * rand(1);
-                    this.variability.F01.phase = 2 * 60 * rand(1);
-                    this.variability.k12.phase = 2 * 60 * rand(1);
-                    this.variability.ka1.phase = 2 * 60 * rand(1);
-                    this.variability.ka2.phase = 2 * 60 * rand(1);
-                    this.variability.ka3.phase = 2 * 60 * rand(1);
-                    this.variability.St.phase = 2 * 60 * rand(1);
-                    this.variability.Sd.phase = 2 * 60 * rand(1);
-                    this.variability.Se.phase = 2 * 60 * rand(1);
-                    this.variability.ka.phase = 2 * 60 * rand(1);
-                    this.variability.ke.phase = 2 * 60 * rand(1);
+                    this.variability.EGP0.phase = 3 * 60 * rand(1);
+                    this.variability.F01.phase = 3 * 60 * rand(1);
+                    this.variability.k12.phase = 3 * 60 * rand(1);
+                    this.variability.ka1.phase = 3 * 60 * rand(1);
+                    this.variability.ka2.phase = 3 * 60 * rand(1);
+                    this.variability.ka3.phase = 3 * 60 * rand(1);
+                    this.variability.St.phase = 3 * 60 * rand(1);
+                    this.variability.Sd.phase = 3 * 60 * rand(1);
+                    this.variability.Se.phase = 3 * 60 * rand(1);
+                    this.variability.ka.phase = 3 * 60 * rand(1);
+                    this.variability.ke.phase = 3 * 60 * rand(1);
                     
-                    this.variability.EGP0.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.F01.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.k12.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka1.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka2.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka3.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.St.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.Sd.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.Se.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ka.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                    this.variability.ke.period = 3 * 60 + 2 * 60 * (rand(1) - 0.5);
-                end
-                
-                % Generate carbs counting error.
-                if ~this.firstIteration
-                    this.applyCarbsCountingErrors();
+                    this.variability.EGP0.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.F01.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.k12.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.ka1.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.ka2.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.ka3.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.St.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.Sd.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.Se.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.ka.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
+                    this.variability.ke.period = 3 * 60 + 0.5 * 60 * (rand(1) - 0.5);
                 end
             end
             
@@ -368,20 +372,20 @@ classdef HovorkaPatient < VirtualPatient
                     this.meals(end).Delay = 0;
                 else
                     this.meals(end).gutAbsorptionModel = @this.gut4CompDelayedModel;
-                    this.meals(end).TauM1 = max(min(this.param.TauM*0.8*(1 + this.opt.mealVariability * randn(1)), 55), 15);
-                    this.meals(end).TauM2 = max(min(this.param.TauM*1.3*(1 + this.opt.mealVariability * randn(1)), 75), 25);
-                    if this.opt.mealVariability > 0.2
+                    this.meals(end).TauM1 = max(min(this.param.TauM*0.6*(1 + this.opt.mealVariability * randn(1)), min(1.4/this.param.ka, 55)), 15);
+                    this.meals(end).TauM2 = max(min(this.param.TauM*1.2*(1 + this.opt.mealVariability * randn(1)), 1.4/this.param.ka), 30);
+                    if this.opt.mealVariability > 0.25
                         this.meals(end).Delay1 = 20 * rand(1);
                         this.meals(end).Delay2 = 10 + 30 * rand(1);
-                        this.meals(end).Prop = 0.3 + 0.4 * rand(1);
+                        this.meals(end).Prop = 0.4 + 0.3 * rand(1);
                     else
                         this.meals(end).Delay1 = 0;
                         this.meals(end).Delay2 = 20;
-                        this.meals(end).Prop = 0.5;
+                        this.meals(end).Prop = 0.7;
                     end
                 end
-                if this.opt.mealVariability > 0.2
-                    this.meals(end).Bio = this.param.Bio * (0.85 + 0.3 * rand(1));
+                if this.opt.mealVariability > 0.25
+                    this.meals(end).Bio = this.param.Bio * (0.9 + 0.4 * rand(1));
                 else
                     this.meals(end).Bio = this.param.Bio;
                 end
@@ -401,7 +405,6 @@ classdef HovorkaPatient < VirtualPatient
                 [startTime, endTime], ...
                 this.state);
             
-            
             this.state = Y(end, :)';
             Um = 0;
             for m = 1:length(this.meals)
@@ -418,14 +421,10 @@ classdef HovorkaPatient < VirtualPatient
                         sensor_noise = 0.7 * (this.CGM.error + randn(1));
                         this.CGM.error = (10 / this.param.MCHO) * (this.CGM.epsilon + ...
                             this.CGM.lambda * sinh((sensor_noise - this.CGM.gamma)/this.CGM.delta));
-                        
-                        
                     case {'ar(1)', 'colored'}
                         phi = 0.8;
                         this.CGM.error = phi * this.CGM.error + ...
                             sqrt(1-phi^2) * this.opt.sensorNoiseValue * randn(1);
-                        
-                        
                     case 'mult'
                         this.CGM.error = this.opt.sensorNoiseValue * this.state(this.eGluInte) * randn(1);
                     case {'white', 'add'}
@@ -474,113 +473,60 @@ classdef HovorkaPatient < VirtualPatient
             
             if this.opt.carbsCountingError
                 meal.value(meal.value > 0) = max(round(meal.value(meal.value > 0).* ...
-                    (1 + this.dailyCarbsCountingError(mod(time(meal.value > 0), 60*24)/(this.mealPlan.simulationStepSize)+1))), 0);
-                
+                    (1 + this.dailyCarbsCountingError((time(meal.value > 0) - this.mealPlan.simulationStartTime)/(this.mealPlan.simulationStepSize)+1))), 0);
             end
         end
         
         function initialState = getInitialState(this)
-            initialState = nan(this.eGluMeas, 1);
-            
-            recomputeGBasal = true;
-            iter = 0;
-            
-            while iter < 1e2 && recomputeGBasal
-                iter = iter + 1;
-                
-                % Basal Glucose (mmol/L).
-                if this.opt.basalGlucose < 0
-                    GBasal = normrnd(7, 3.5);
-                    while GBasal < 5 || GBasal > 11
-                        GBasal = normrnd(7, 3.5);
-                    end
-                else
-                    GBasal = this.opt.basalGlucose;
-                end
-                
-                % Plasma glucose (umol/kg).
-                Q10 = GBasal * this.param.Vg;
-                
-                Fn = Q10 * (this.param.F01 / 0.85) / (Q10 + this.param.Vg);
-                Fr = this.param.RCl * (Q10 - this.param.RTh * this.param.Vg) * (Q10 > this.param.RTh * this.param.Vg);
-                Slin = roots([ ...
-                    (-Q10 * this.param.St - this.param.EGP0 * this.param.Se) * this.param.Sd, ...
-                    (-this.param.k12 * this.param.EGP0 * this.param.Se + (this.param.EGP0 - Fr - Fn) * this.param.Sd), ...
-                    this.param.k12 * (this.param.EGP0 - Fn - Fr), ...
-                    ]);
-                
-                
-                syms x positive
-                S = vpasolve(-Fn ...
-                    -Q10*this.param.St*x ...
-                    +this.param.k12*(Q10 * this.param.St * x)/(this.param.k12 + this.param.Sd * x) ...
-                    -Fr ...
-                    +this.param.EGP0*exp(-this.param.Se*x) == 0, x, max(double(Slin)));
-                
-                
-                
-                % Insulin plasma (mU/L).
-                if ~isempty(S) && isreal(double(S))
-                    Ip0 = double(S);
-                else
-                    Ip0 = abs(S);
-                    warning('Couldn''t solve for initial conditions!');
-                end
-                
-                % Basal insulin.
-                this.param.Ub = 60 * Ip0 * this.param.ke / (1e6 / (this.param.Vi * this.param.w));
-                
-                if this.opt.basalGlucose < 0
-                    if this.param.Ub < 2.5 && this.param.Ub > 0.05
-                        recomputeGBasal = false;
-                    else
-                        recomputeGBasal = true;
-                    end
-                else
-                    recomputeGBasal = false;
-                end
-            end
-            
-            % Glucose measurement (mmol/L).
-            if this.opt.initialGlucose < 0
-                Gs0 = this.opt.basalGlucose * (1 + 0.7 * randn(1));
-                while Gs0 < 5 || Gs0 > 14
-                    Gs0 = this.opt.basalGlucose * (1 + 0.7 * randn(1));
-                end
+            if ~isempty(this.opt.initialState)
+                initialState = this.opt.initialState;
             else
-                Gs0 = this.opt.initialGlucose;
-            end
-            
-            initialState(this.eGluPlas) = Gs0 * this.param.Vg;
-            initialState(this.eGluMeas) = Gs0;
-            initialState(this.eGluInte) = Gs0;
-            
-            % On-board bolus.
-            Qb = 0;
-            if this.opt.initialGlucose < 0
-                Qb = 2.5 * (rand(1) - 0.5);
-                while 0.8 * Ip0 + Qb / (this.param.ke / (1e6 * this.param.ka / (this.param.Vi * this.param.w))) < 0
-                    Qb = 2.5 * (rand(1) - 0.5);
+                initialState = nan(this.eGluMeas, 1);
+                
+                % Glucose measurement (mmol/L).
+                if this.opt.initialGlucose < 0
+                    Gs0 = this.param.GBasal * (1 + 0.7 * randn(1));
+                    while Gs0 < 4 || Gs0 > 14
+                        Gs0 = this.param.GBasal * (1 + 0.7 * randn(1));
+                    end
+                else
+                    Gs0 = this.opt.initialGlucose;
                 end
+                
+                initialState(this.eGluPlas) = Gs0 * this.param.Vg;
+                initialState(this.eGluMeas) = Gs0;
+                initialState(this.eGluInte) = Gs0;
+                
+                % On-board bolus.
+                if this.opt.initialInsulinOnBoard < 0
+                    Qb = 2.5 * (rand(1) - 0.5);
+                    while (0.8 * this.param.Ub + Qb) / (this.param.ke / (1e6 * this.param.ka / (this.param.Vi * this.param.w))) < 0
+                        Qb = 2.5 * (rand(1) - 0.5);
+                    end
+                else
+                    Qb = this.opt.initialInsulinOnBoard;
+                end
+                
+                % Plasma insulin kinetics subsystem (mU/L).
+                initialState(this.eInsPlas) = (this.param.Ub + Qb) / (this.param.ke / (1e6 * this.param.ka / (this.param.Vi * this.param.w)));
+                
+                % Insulin actions.
+                initialState(this.eInsActT) = this.param.St * initialState(this.eInsPlas);
+                initialState(this.eInsActD) = this.param.Sd * initialState(this.eInsPlas);
+                initialState(this.eInsActE) = this.param.Se * initialState(this.eInsPlas);
+                
+                % Glucose plasma (umol/kg).
+                Q10 = this.param.GBasal * this.param.Vg;
+                Q20 = Q10 * initialState(this.eInsActT) / (initialState(this.eInsActD) + this.param.k12); % umol/kg.
+                initialState(this.eGluComp) = Q20;
+                
+                % Subcutenous insulin.
+                initialState(this.eInsSub1) = this.param.Ub / 60 / this.param.ka;
+                initialState(this.eInsSub2) = initialState(this.eInsSub1);
+                
+                % Reset Gut Absorption
+                initialState(this.eGutAbs) = 0;
             end
-            
-            initialState(this.eInsPlas) = Ip0 + Qb / (this.param.ke / (1e6 * this.param.ka / (this.param.Vi * this.param.w)));
-            
-            % Insulin actions.
-            initialState(this.eInsActT) = this.param.St * initialState(this.eInsPlas);
-            initialState(this.eInsActD) = this.param.Sd * initialState(this.eInsPlas);
-            initialState(this.eInsActE) = this.param.Se * initialState(this.eInsPlas);
-            
-            % Glucose plasma.
-            Q20 = Q10 * initialState(this.eInsActT) / (initialState(this.eInsActD) + this.param.k12); % umol/kg.
-            initialState(this.eGluComp) = Q20;
-            
-            % Subcutenous insulin
-            initialState(this.eInsSub1) = this.param.Ub / 60 / this.param.ka;
-            initialState(this.eInsSub2) = initialState(this.eInsSub1);
-            
-            % Reset Gut Absorption
-            initialState(this.eGutAbs) = 0;
             
             initialState = initialState(:);
         end
@@ -592,8 +538,8 @@ classdef HovorkaPatient < VirtualPatient
             
             this.variability.EGP0.val = (1 - alp) * this.variability.EGP0.val + alp * this.param.EGP0 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.EGP0.phase)/(this.variability.EGP0.period)));
             this.variability.F01.val = (1 - alp) * this.variability.F01.val + alp * this.param.F01 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.F01.phase)/(this.variability.F01.period)));
-            this.variability.k12.val = (1 - alp) * this.variability.k12.val + alp * this.param.k12 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.k12.phase)/(this.variability.ka1.period)));
-            this.variability.ka1.val = (1 - alp) * this.variability.ka1.val + alp * this.param.ka1 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.ka1.phase)/(this.variability.F01.period)));
+            this.variability.k12.val = (1 - alp) * this.variability.k12.val + alp * this.param.k12 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.k12.phase)/(this.variability.k12.period)));
+            this.variability.ka1.val = (1 - alp) * this.variability.ka1.val + alp * this.param.ka1 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.ka1.phase)/(this.variability.ka1.period)));
             this.variability.ka2.val = (1 - alp) * this.variability.ka2.val + alp * this.param.ka2 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.ka2.phase)/(this.variability.ka2.period)));
             this.variability.ka3.val = (1 - alp) * this.variability.ka3.val + alp * this.param.ka3 * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.ka3.phase)/(this.variability.ka3.period)));
             this.variability.St.val = (1 - alp) * this.variability.St.val + alp * this.param.St * (1 + this.opt.intraVariability * sin(2*pi*(t + this.variability.St.phase)/(this.variability.St.period)));
@@ -604,23 +550,31 @@ classdef HovorkaPatient < VirtualPatient
         end
         
         function applyCarbsCountingErrors(this)
+            time = this.mealPlan.simulationStartTime:this.mealPlan.simulationStepSize:(this.mealPlan.simulationStartTime + this.mealPlan.simulationDuration);
             if this.opt.carbsCountingError
-                this.dailyCarbsCountingError = nan(1440/this.mealPlan.simulationStepSize, 1);
+                this.dailyCarbsCountingError = nan(this.mealPlan.simulationDuration/this.mealPlan.simulationStepSize+1, 1);
                 if ~isempty(fieldnames(this.opt.dailyCarbsCountingError))
-                    for ccIdx = 1:length(this.opt.dailyCarbsCountingError.time)
-                        if ccIdx == length(this.opt.dailyCarbsCountingError.time)
-                            idxStart = mod(this.opt.dailyCarbsCountingError.time(end), 1440) / this.mealPlan.simulationStepSize + 1;
-                            idxEnd = mod(this.opt.dailyCarbsCountingError.time(1), 1440) / this.mealPlan.simulationStepSize;
-                            this.dailyCarbsCountingError(idxStart:end) = this.opt.dailyCarbsCountingError.value(end);
-                            this.dailyCarbsCountingError(1:idxEnd) = this.opt.dailyCarbsCountingError.value(end);
+                    for n = 1:length(time)
+                        idx = find(this.opt.dailyCarbsCountingError.time <= time(n), 1, 'last');
+                        if ~isempty(idx)
+                            this.dailyCarbsCountingError(n) = this.opt.dailyCarbsCountingError.value(idx);
                         else
-                            idxStart = mod(this.opt.dailyCarbsCountingError.time(ccIdx), 1440) / this.mealPlan.simulationStepSize + 1;
-                            idxEnd = mod(this.opt.dailyCarbsCountingError.time(ccIdx+1), 1440) / this.mealPlan.simulationStepSize;
-                            this.dailyCarbsCountingError(idxStart:idxEnd) = this.opt.dailyCarbsCountingError.value(ccIdx);
+                            this.dailyCarbsCountingError(n) = this.opt.dailyCarbsCountingError.value(end);
                         end
                     end
                 else % Choose random carb counting erros
-                    this.dailyCarbsCountingError = 0.15 * randn(1440/this.mealPlan.simulationStepSize, 1);
+                    dailyCarbsCountingError_.time = unique(floor(time/(4 * 60))) * (4 * 60);
+                    dailyCarbsCountingErrorValue = 0.25 * randn(length(unique(mod(dailyCarbsCountingError_.time, 1440))), 1);
+                    dailyCarbsCountingError_.value = dailyCarbsCountingErrorValue(mod(dailyCarbsCountingError_.time, 1440)/(4 * 60)+1);
+                    
+                    for n = 1:length(time)
+                        idx = find(dailyCarbsCountingError_.time <= time(n), 1, 'last');
+                        if ~isempty(idx)
+                            this.dailyCarbsCountingError(n) = dailyCarbsCountingError_.value(idx) + 0.02 * randn(1);
+                        else
+                            this.dailyCarbsCountingError(n) = dailyCarbsCountingError_.value(end) + 0.02 * randn(1);
+                        end
+                    end
                 end
             end
         end
@@ -644,7 +598,6 @@ classdef HovorkaPatient < VirtualPatient
             if t > (meal.time + meal.Delay)
                 Um = (1e6 / (this.param.w * this.param.MCHO)) * meal.Bio * meal.value * ...
                     (t - meal.time - meal.Delay) * exp(-(t - meal.time - meal.Delay)/meal.TauM) / meal.TauM^2;
-                
             else
                 Um = 0;
             end
@@ -663,8 +616,6 @@ classdef HovorkaPatient < VirtualPatient
                 GluPlas = GluPlas + ...
                     (1e6 / (this.param.w * this.param.MCRGlu)) * this.glucagon(g).value * ...
                     (t - this.glucagon(g).time) * exp(-(t - this.glucagon(g).time)/this.param.TauGlu) / this.param.TauGlu^2;
-                
-                
             end
             
             % Plasma insulin kinetics subsystem (mU/L).
@@ -688,11 +639,8 @@ classdef HovorkaPatient < VirtualPatient
                 +this.variability.EGP0.val * (exp(-y(this.eInsActE)) + exp(-1/(GluPlas * this.param.TGlu))) ...
                 +Um;
             
-            
             dydt(this.eGluComp) = y(this.eInsActT) * y(this.eGluPlas) ...
                 -(this.variability.k12.val + y(this.eInsActD)) * y(this.eGluComp);
-            
-            
             
             % Glucose sensor (mmol/L).
             dydt(this.eGluInte) = (y(this.eGluPlas) / this.param.Vg - y(this.eGluInte)) / this.param.TauS;

@@ -21,6 +21,10 @@ classdef InfusionControllerTemplate < InfusionController
             infusions.basalInsulin = 0; % Example: set the basal insulin.
             infusions.bolusInsulin = round(this.patient.getMeal(currentTime).value / 10); % Example: set the bolus insulin.
         end
+        
+        function setInfusions(this, time, infusions)
+            % Nothing to do since we don't store infusions history.
+        end
     end
 
     methods (Access = private)

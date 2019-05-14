@@ -7,5 +7,5 @@ global simulator;
 configurePaths();
 
 %% Start the GUI.
-GUI();
+GUISimulator();
 
