@@ -15,7 +15,7 @@ classdef PumpTherapy < InfusionController
         bolusHistory;
         
         pumpShutOff;
-        lastBolusTime;        
+        lastBolusTime;
     end
     
     methods (Static)
@@ -182,6 +182,7 @@ classdef PumpTherapy < InfusionController
             this.opt.corrBolusRules(1).glucoseThresh = 15.0;
             this.opt.corrBolusRules(1).dGlucoseThresh = 0.0;
             this.opt.temporalBasal = struct('time', [], 'type', [], 'value', [], 'duration', []);
+            this.opt.bolusCalculatorError = struct('time', [], 'value', []);
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -208,7 +209,7 @@ classdef PumpTherapy < InfusionController
             this.pumpShutOff = false;
             
             % Initialize last time of bolus
-            this.lastBolusTime = -inf;            
+            this.lastBolusTime = -inf;
         end
         
         function infusions = getInfusions(this, time)
@@ -304,7 +305,7 @@ classdef PumpTherapy < InfusionController
                             case 'rate'
                                 Ub = this.opt.temporalBasal.value(idx);
                             case 'percent'
-                                Ub = Ub*this.opt.temporalBasal.value(idx);
+                                Ub = Ub * this.opt.temporalBasal.value(idx);
                         end
                     end
                 end
@@ -392,6 +393,13 @@ classdef PumpTherapy < InfusionController
                             infusions.bolusInsulin = round(2*corrBolus, 1) / 2;
                         end
                     end
+                end
+            end
+            
+            if ~isempty(this.opt.bolusCalculatorError)
+                idx = find(this.opt.bolusCalculatorError.time <= time, 1, 'last');
+                if ~isempty(idx)
+                    infusions.bolusInsulin = infusions.bolusInsulin * (1 + this.opt.bolusCalculatorError.value(idx));
                 end
             end
             

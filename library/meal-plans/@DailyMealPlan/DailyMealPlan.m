@@ -1,10 +1,11 @@
 classdef DailyMealPlan < MealPlan
     
-    properties(GetAccess = public, SetAccess = private)
+    properties (GetAccess = public, SetAccess = private)
         meals; % Precomputed meal values and glycemic loads.
+        opt;
     end
     
-    methods(Static)
+    methods (Static)
         function options = configure(className, lastOptions)
             defaultAns = struct();
             defaultAns.mealTable = cell(50, 6);
@@ -80,21 +81,23 @@ classdef DailyMealPlan < MealPlan
             this@MealPlan(simulationStartTime, simulationDuration, simulationStepSize);
             
             % Parse options.
-            if exist('options', 'var') && isfield(options, 'name')
-                this.name = options.name;
-            end
+            this.opt = struct();
+            this.opt.name = this.name;
+            this.opt.meals = table2struct(table( ...
+                logical([1; 1; 1; 1]), ...
+                [8; 12; 18; 22]*60, ...
+                [40; 80; 60; 30], ...
+                [25; 15; 15; 5], ...
+                [1; 1; 1; 1], ...
+                'VariableNames', {'repeat', 'time', 'value', 'glycemicLoad', 'announcedFraction'}));
             
-            if exist('options', 'var') && isfield(options, 'meals')
-                meals = options.meals;
-            else
-                mealTable = table( ...
-                    logical([1; 1; 1; 1]), ...
-                    [8; 12; 18; 22]*60, ...
-                    [40; 80; 60; 30], ...
-                    [25; 15; 15; 5], ...
-                    [1; 1; 1; 1], ...
-                    'VariableNames', {'repeat', 'time', 'value', 'glycemicLoad', 'announcedFraction'});
-                meals = table2struct(mealTable);
+            if exist('options', 'var')
+                f = fields(this.opt);
+                for i = 1:numel(f)
+                    if isfield(options, f{i})
+                        this.opt.(f{i}) = options.(f{i});
+                    end
+                end
             end
             
             % Compute number of steps.
@@ -107,22 +110,22 @@ classdef DailyMealPlan < MealPlan
             this.meals.announced = sparse(numSteps, 1);
             
             % Fill meals from meal table.
-            for i = 1:numel(meals)
-                index = floor(meals(i).time/this.simulationStepSize) + 1;
+            for i = 1:numel(this.opt.meals)
+                index = floor(this.opt.meals(i).time/this.simulationStepSize) + 1;
                 
-                this.meals.values(index) = meals(i).value;
-                this.meals.glycemicLoads(index) = meals(i).glycemicLoad;
-                this.meals.announced(index) = meals(i).announcedFraction > rand(1);
+                this.meals.values(index) = this.opt.meals(i).value;
+                this.meals.glycemicLoads(index) = this.opt.meals(i).glycemicLoad;
+                this.meals.announced(index) = this.opt.meals(i).announcedFraction > rand(1);
                 
-                if meals(i).repeat
+                if this.opt.meals(i).repeat
                     day = 1;
-                    index = floor((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                    index = floor((this.opt.meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     while index <= numSteps
-                        this.meals.values(index) = meals(i).value;
-                        this.meals.glycemicLoads(index) = meals(i).glycemicLoad;
-                        this.meals.announced(index) = meals(i).announcedFraction > rand(1);
+                        this.meals.values(index) = this.opt.meals(i).value;
+                        this.meals.glycemicLoads(index) = this.opt.meals(i).glycemicLoad;
+                        this.meals.announced(index) = this.opt.meals(i).announcedFraction > rand(1);
                         day = day + 1;
-                        index = floor((meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                        index = floor((this.opt.meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
                     end
                 end
             end

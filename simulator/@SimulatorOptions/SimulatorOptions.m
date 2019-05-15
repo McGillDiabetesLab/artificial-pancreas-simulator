@@ -5,7 +5,7 @@ classdef SimulatorOptions
     %
     %   See also /ARTIFICIALPANCREASSIMULATOR.
     
-    properties(Access = public)
+    properties (Access = public)
         %SIMULATIONSTARTTIME  Simulation start time.
         %   The time of the day in minutes at which to start the
         %   simulation.
@@ -116,5 +116,57 @@ classdef SimulatorOptions
         resultsManager;
     end
     
+    methods (Static)
+        function options = getOptions(name)
+            options = struct();
+            
+            dummyOpt = SimulatorOptions;
+            dummyOpt.simulationDuration = 8 * 60; % minutes
+            dummyOpt.simulationStartTime = 0 * 60; % minutes
+            dummyOpt.simulationStepSize = 10; % minutes
+            dummyOpt.resultsManager = 'ResultsManagerTemplate';
+            
+            if contains(which(name), 'patient', 'IgnoreCase', true)
+                dummyOpt.virtualPatients{1} = { ...
+                    name, ...
+                    'MealPlanTemplate', ...
+                    'ExercisePlanTemplate', ...
+                    'InfusionControllerTemplate'};
+                dummySim = ArtificialPancreasSimulator(dummyOpt);
+                if isprop(dummySim.patients{1}, 'opt')
+                    options = dummySim.patients{1}.opt;
+                end
+            elseif contains(which(name), 'mealplan', 'IgnoreCase', true)
+                dummyOpt.virtualPatients{1} = { ...
+                    'VirtualPatientTemplate', ...
+                    name, ...
+                    'ExercisePlanTemplate', ...
+                    'InfusionControllerTemplate'};
+                dummySim = ArtificialPancreasSimulator(dummyOpt);
+                if isprop(dummySim.patients{1}.mealPlan, 'opt')
+                    options = dummySim.patients{1}.mealPlan.opt;
+                end
+            elseif contains(which(name), 'exercise', 'IgnoreCase', true)
+                dummyOpt.virtualPatients{1} = { ...
+                    'VirtualPatientTemplate', ...
+                    'MealPlanTemplate', ...
+                    name, ...
+                    'InfusionControllerTemplate'};
+                dummySim = ArtificialPancreasSimulator(dummyOpt);
+                if isprop(dummySim.patients{1}.exercisePlan, 'opt')
+                    options = dummySim.patients{1}.exercisePlan.opt;
+                end
+            elseif contains(which(name), 'controller', 'IgnoreCase', true)
+                dummyOpt.virtualPatients{1} = { ...
+                    'VirtualPatientTemplate', ...
+                    'MealPlanTemplate', ...
+                    'ExercisePlanTemplate', ...
+                    name};
+                dummySim = ArtificialPancreasSimulator(dummyOpt);
+                if isprop(dummySim.primaryControllers{1}, 'opt')
+                    options = dummySim.primaryControllers{1}.opt;
+                end
+            end
+        end
+    end
 end
-

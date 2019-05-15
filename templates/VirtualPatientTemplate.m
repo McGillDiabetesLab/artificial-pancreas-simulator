@@ -16,8 +16,12 @@ classdef VirtualPatientTemplate < VirtualPatient
             
             % Write your code to initialize the virtual patient here.
             this.param = struct(); % Example: initialize the model parameters to an empty struct.
-            this.param.name = options.name; %Example: parameters has a name field which is initialized from options.
-            this.state = zeros(this.n, 1); % Example: initialize the state to a column vector of zeros.
+            %Example: parameters has a name field which is initialized from options.
+            if exist('options', 'var') && isfield(options, 'name')
+                this.param.name = options.name;
+            end
+            % Example: initialize the state to a column vector of zeros.
+            this.state = zeros(this.n, 1); 
         end
         
         function prop = getProperties(this)

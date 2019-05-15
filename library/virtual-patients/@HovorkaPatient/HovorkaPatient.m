@@ -487,7 +487,7 @@ classdef HovorkaPatient < VirtualPatient
                 % On-board bolus.
                 if this.opt.initialInsulinOnBoard < 0
                     Qb = 2.5 * (rand(1) - 0.5);
-                    while (0.8 * this.param.Ub + Qb) / (this.param.ke / (1e6 * this.param.ka / (this.param.Vi * this.param.w))) < 0
+                    while Qb < -0.8 * this.param.Ub
                         Qb = 2.5 * (rand(1) - 0.5);
                     end
                 else
@@ -503,7 +503,7 @@ classdef HovorkaPatient < VirtualPatient
                 initialState(this.eInsActE) = this.param.Se * initialState(this.eInsPlas);
                 
                 % Glucose plasma (umol/kg).
-                Q10 = this.param.GBasal * this.param.Vg;
+                Q10 = Gs0 * this.param.Vg;
                 Q20 = Q10 * initialState(this.eInsActT) / (initialState(this.eInsActD) + this.param.k12); % umol/kg.
                 initialState(this.eGluComp) = Q20;
                 
