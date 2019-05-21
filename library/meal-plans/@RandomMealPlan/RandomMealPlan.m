@@ -1,10 +1,11 @@
 classdef RandomMealPlan < MealPlan
     
-    properties(GetAccess = public, SetAccess = private)
+    properties (GetAccess = public, SetAccess = private)
+        opt;
         meals; % Precomputed meal values and glycemic loads.
     end
     
-    methods(Static)
+    methods (Static)
         function options = configure(className, lastOptions)
             mealNames = {'breakfast', 'snackMorning', 'lunch', 'snackAfternoon', 'dinner', 'snackNight'};
             
@@ -110,73 +111,63 @@ classdef RandomMealPlan < MealPlan
             this@MealPlan(simulationStartTime, simulationDuration, simulationStepSize);
             
             % Parse options.
-            if exist('options', 'var') && isfield(options, 'name')
-                this.name = options.name;
+            this.opt.name = this.name;
+            this.opt.repeatDailyMeals = false;
+            this.opt.dailyCarbsMax = 400;
+            this.opt.dailyCarbsMin = 40;
+            this.opt.RNGSeed = -1;
+            this.opt.plan.breakfast = struct('enabled', true, ...
+                'time', [7, 9]*60, ...
+                'value', [40, 60], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 1);
+            
+            this.opt.plan.snackMorning = struct('enabled', false, ...
+                'time', [], ...
+                'value', [], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 0);
+            
+            this.opt.plan.lunch = struct('enabled', true, ...
+                'time', [12, 13]*60, ...
+                'value', [60, 100], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 1);
+            
+            this.opt.plan.snackAfternoon = struct('enabled', false, ...
+                'time', [], ...
+                'value', [], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 0);
+            
+            this.opt.plan.dinner = struct('enabled', true, ...
+                'time', [17, 21]*60, ...
+                'value', [30, 70], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 1);
+            
+            this.opt.plan.snackNight = struct('enabled', false, ...
+                'time', [], ...
+                'value', [], ...
+                'glycemicLoad', 1, ...
+                'announcedFraction', 0);
+            
+            if exist('options', 'var')
+                f = fields(this.opt);
+                for i = 1:numel(f)
+                    if isfield(options, f{i})
+                        this.opt.(f{i}) = options.(f{i});
+                    end
+                end
             end
             
-            if exist('options', 'var') && isfield(options, 'dailyCarbsMax')
-                dailyCarbsMax = options.dailyCarbsMax;
-            else
-                dailyCarbsMax = 400;
-            end
-            
-            if exist('options', 'var') && isfield(options, 'dailyCarbsMin')
-                dailyCarbsMin = options.dailyCarbsMin;
-            else
-                dailyCarbsMin = 40;
-            end
-            
-            if exist('options', 'var') && isfield(options, 'RNGSeed')
-                rng(options.RNGSeed);
-            end
-            
-            if exist('options', 'var') && isfield(options, 'plan')
-                plan = options.plan;
-            else
-                plan.breakfast = struct('enabled', true, ...
-                    'time', [7, 9]*60, ...
-                    'value', [40, 60], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 1);
-                
-                plan.snackMorning = struct('enabled', false, ...
-                    'time', [], ...
-                    'value', [], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 0);
-                
-                plan.lunch = struct('enabled', true, ...
-                    'time', [12, 13]*60, ...
-                    'value', [60, 100], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 1);
-                
-                plan.snackAfternoon = struct('enabled', false, ...
-                    'time', [], ...
-                    'value', [], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 0);
-                
-                plan.dinner = struct('enabled', true, ...
-                    'time', [17, 21]*60, ...
-                    'value', [30, 70], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 1);
-                
-                plan.snackNight = struct('enabled', false, ...
-                    'time', [], ...
-                    'value', [], ...
-                    'glycemicLoad', 1, ...
-                    'announcedFraction', 0);
-            end
-            
-            if exist('options', 'var') && isfield(options, 'RNGSeed') && options.RNGSeed > 0
+            if this.opt.RNGSeed > 0
                 rng(options.RNGSeed);
             end
             
             % Compute number of steps.
-            numDays = ceil((simulationStartTime + simulationDuration)/(24 * 60)) + 1;
-            numSteps = ceil(numDays*24*60/simulationStepSize);
+            numOfDays = ceil((simulationStartTime + simulationDuration)/(24 * 60)) + 1;
+            numSteps = ceil(numOfDays*24*60/simulationStepSize);
             
             % Use sparse matrices for efficient storage.
             this.meals.values = sparse(numSteps, 1);
@@ -185,27 +176,32 @@ classdef RandomMealPlan < MealPlan
             
             % Fill meals from plan.
             mealNames = {'breakfast', 'snackMorning', 'lunch', 'snackAfternoon', 'dinner', 'snackNight'};
-            for day = 1:numDays
+            if this.opt.repeatDailyMeals
+                days = 1;
+            else
+                days = 1:numOfDays;
+            end
+            for day = days
                 totalCarbs = -1;
                 iter = 0;
-                while iter < 100 && (totalCarbs < dailyCarbsMin || totalCarbs > dailyCarbsMax)
+                while iter < 100 && (totalCarbs < this.opt.dailyCarbsMin || totalCarbs > this.opt.dailyCarbsMax)
                     iter = iter + 1;
                     totalCarbs = 0;
                     meals_ = this.meals;
                     for mnIdx = 1:numel(mealNames)
-                        if plan.(mealNames{mnIdx}).enabled
-                            Index = round(((day - 1) * 24 * 60 + plan.(mealNames{mnIdx}).time(1) + diff(plan.(mealNames{mnIdx}).time) * rand(1))/this.simulationStepSize) + 1;
-                            if simulationStartTime >= plan.(mealNames{mnIdx}).time(1) && ...
-                                    simulationStartTime <= plan.(mealNames{mnIdx}).time(end) && ...
+                        if this.opt.plan.(mealNames{mnIdx}).enabled
+                            Index = round(((day - 1) * 24 * 60 + this.opt.plan.(mealNames{mnIdx}).time(1) + diff(this.opt.plan.(mealNames{mnIdx}).time) * rand(1))/this.simulationStepSize) + 1;
+                            if simulationStartTime >= this.opt.plan.(mealNames{mnIdx}).time(1) && ...
+                                    simulationStartTime <= this.opt.plan.(mealNames{mnIdx}).time(end) && ...
                                     Index < floor(simulationStartTime/simulationStepSize) + 1
                                 Index = floor(simulationStartTime/simulationStepSize) + 1;
                             end
-                            meals_.values(Index) = round(plan.(mealNames{mnIdx}).value(1)+diff(plan.(mealNames{mnIdx}).value)*rand(1));
+                            meals_.values(Index) = round(this.opt.plan.(mealNames{mnIdx}).value(1)+diff(this.opt.plan.(mealNames{mnIdx}).value)*rand(1));
                             if meals_.values(Index) < 5 % do not count meals less than 5g
                                 meals_.values(Index) = 0;
                             end
-                            meals_.glycemicLoads(Index) = plan.(mealNames{mnIdx}).glycemicLoad;
-                            meals_.announced(Index) = plan.(mealNames{mnIdx}).announcedFraction > rand(1);
+                            meals_.glycemicLoads(Index) = this.opt.plan.(mealNames{mnIdx}).glycemicLoad;
+                            meals_.announced(Index) = this.opt.plan.(mealNames{mnIdx}).announcedFraction > rand(1);
                             totalCarbs = totalCarbs + meals_.values(Index);
                         end
                     end
@@ -214,6 +210,18 @@ classdef RandomMealPlan < MealPlan
                     warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%d, %d] g.', dailyCarbsMin, dailyCarbsMax);
                 end
                 this.meals = meals_;
+            end
+            
+            if this.opt.repeatDailyMeals
+                for idx = 1:1:(24 * 60) / this.simulationStepSize
+                    if this.meals.values(idx) > 0
+                        for day = 2:numOfDays
+                            this.meals.values(idx+(day - 1)*24*60/this.simulationStepSize) = this.meals.values(idx);
+                            this.meals.glycemicLoads(idx+(day - 1)*24*60/this.simulationStepSize) = this.meals.glycemicLoads(idx);
+                            this.meals.announced(idx+(day - 1)*24*60/this.simulationStepSize) = this.meals.announced(idx);
+                        end
+                    end
+                end
             end
         end
         

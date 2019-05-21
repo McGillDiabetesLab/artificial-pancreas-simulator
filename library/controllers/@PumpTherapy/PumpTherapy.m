@@ -396,7 +396,7 @@ classdef PumpTherapy < InfusionController
                 end
             end
             
-            if ~isempty(this.opt.bolusCalculatorError)
+            if ~isempty(this.opt.bolusCalculatorError.time)
                 idx = find(this.opt.bolusCalculatorError.time <= time, 1, 'last');
                 if ~isempty(idx)
                     infusions.bolusInsulin = infusions.bolusInsulin * (1 + this.opt.bolusCalculatorError.value(idx));
