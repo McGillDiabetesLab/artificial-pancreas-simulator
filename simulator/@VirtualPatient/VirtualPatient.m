@@ -50,6 +50,37 @@ classdef VirtualPatient < matlab.mixin.Copyable
         exercisePlan;
     end
     
+    properties(Dependent)
+        %SIMULATIONSTARTTIME  Simulation start time.
+        %   The time of the day in minutes at which the simulation starts.
+        simulationStartTime;
+        
+        %SIMULATIONDURATION  Simulation duration.
+        %   The duration of the simulation in minutes.
+        simulationDuration;
+        
+        %SIMULATIONSTEPSIZE  Simulation step size.
+        %   The time between simulation steps in minutes.
+        simulationStepSize;
+    end
+    
+    methods
+        function out = get.simulationStartTime(this)
+            %GETTER for SIMULATIONSTARTTIME
+            out = this.mealPlan.simulationStartTime;
+        end
+        
+        function out = get.simulationDuration(this)
+            %GETTER for SIMULATIONDURATION
+            out = this.mealPlan.simulationDuration;
+        end
+        
+        function out = get.simulationStepSize(this)
+            %GETTER for SIMULATIONDURATION
+            out = this.mealPlan.simulationStepSize;
+        end
+    end
+    
     methods(Static)
         function options = configure(className, lastOptions)
             %CONFIGURE  Input dialog box for configuring the class.
