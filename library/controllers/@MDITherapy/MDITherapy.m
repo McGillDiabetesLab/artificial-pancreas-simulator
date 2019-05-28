@@ -20,7 +20,7 @@ classdef MDITherapy < InfusionController
             defaultAns = struct();
             if ~exist('lastOptions', 'var')
                 defaultAns.name = className;
-                defaultAns.targetGlucose = 6.0;
+                defaultAns.targetGlucose = 6.5;
                 defaultAns.useFixedISF = false;
                 defaultAns.insulinSensitivity = 2.5;
                 defaultAns.mealBolus = true;
@@ -101,7 +101,7 @@ classdef MDITherapy < InfusionController
             % Parse options.
             this.opt = struct();
             this.opt.name = this.name;
-            this.opt.targetGlucose = 6.0;
+            this.opt.targetGlucose = 6.5;
             this.opt.useFixedISF = false;
             this.opt.insulinSensitivity = 2.5;
             this.opt.mealBolus = true;
@@ -118,18 +118,6 @@ classdef MDITherapy < InfusionController
             
             this.name = this.opt.name;
             
-            % Customize ISF per patient if useFixedISF is false.
-            if ~this.opt.useFixedISF
-                prop = this.patient.getProperties();
-                if isfield(prop, 'ISF')
-                    this.opt.insulinSensitivity = prop.ISF;
-                elseif isfield(prop, 'TDD')
-                    this.opt.insulinSensitivity = 110.0 / prop.TDD;
-                    this.opt.insulinSensitivity = min(this.opt.insulinSensitivity, 7.5);
-                    this.opt.insulinSensitivity = max(this.opt.insulinSensitivity, 0.5);
-                end
-            end
-            
             % Initialize state.
             this.glucoseHistory = nan(1, this.glucoseHistorySize);
             
@@ -143,6 +131,7 @@ classdef MDITherapy < InfusionController
         end
         
         function infusions = getInfusions(this, time)
+            
             % Initialize infusions.
             infusions.bolusInsulin = 0;
             infusions.basalInsulin = 0;
@@ -154,10 +143,35 @@ classdef MDITherapy < InfusionController
             
             % Get patient properties.
             prop = this.patient.getProperties();
-            pumpBasals = prop.pumpBasals.value;
+            
+            % Compute ISF
+            if ~this.opt.useFixedISF
+                if isfield(prop, 'insulinSensitivity')
+                    ISFs = prop.insulinSensitivity.value;
+                    idx = find(prop.insulinSensitivity.time <= mod(time, 24*60), 1, 'last');
+                    if ~isempty(idx)
+                        ISF = ISFs(idx);
+                    else
+                        ISF = ISFs(end);
+                    end
+                elseif isfield(prop, 'TDD')
+                    ISF = 110.0 / prop.TDD;
+                    ISF = min(ISF, 7.5);
+                    ISF = max(ISF, 0.5);
+                end
+            else
+                ISF = this.opt.insulinSensitivity;
+            end
+            
+            if isfield(prop, 'targetGlucose')
+                targetGlucose = prop.targetGlucose;
+            else
+                targetGlucose = this.opt.targetGlucose;
+            end
             
             % Compute basal.
             if isfield(prop, 'pumpBasals')
+                pumpBasals = prop.pumpBasals.value;
                 infusions.basalInsulin = round(mean(pumpBasals), 2);
             end
             
@@ -178,13 +192,13 @@ classdef MDITherapy < InfusionController
                     end
                     
                     if this.opt.correctionBolus
-                        correctionBolus = (glucose - this.opt.targetGlucose) / this.opt.insulinSensitivity;
-                        infusions.bolusInsulin = floor(20*( ...
+                        correctionBolus = (glucose - targetGlucose) / ISF;
+                        infusions.bolusInsulin = round(2*( ...
                             meal.value / carbFactor + ...
-                            max(correctionBolus, 0))) / 20;
+                            correctionBolus), 1) / 2;
                     else
-                        infusions.bolusInsulin = floor(20*( ...
-                            meal.value / carbFactor)) / 20;
+                        infusions.bolusInsulin = round(2*( ...
+                            meal.value / carbFactor), 1) / 2;
                     end
                     
                     if infusions.bolusInsulin < 0
