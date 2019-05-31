@@ -251,7 +251,7 @@ if exist('MEALS', 'var') > 0
 end
 if exist('USED_MEALS', 'var') > 0
     legendHandlers(end+1) = USED_MEALS;
-    legendTitles{end+1} = 'Counted Meal CHO';
+    legendTitles{end+1} = 'Bolused CHO';
 end
 if exist('EXERS', 'var') > 0
     legendHandlers(end+1) = EXERS;
