@@ -298,7 +298,7 @@ classdef PumpTherapy < InfusionController
                 Ub = 1.0; % U/h.
             end
             if ~isempty(this.opt.temporalBasal.time)
-                idx = find(this.opt.temporalBasal.time <= mod(time, 24*60), 1, 'last');
+                idx = find(this.opt.temporalBasal.time <= time, 1, 'last');
                 if ~isempty(idx)
                     if time < this.opt.temporalBasal.time(idx) + this.opt.temporalBasal.duration(idx)
                         switch lower(this.opt.temporalBasal.type{idx})
