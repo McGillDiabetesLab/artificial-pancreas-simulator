@@ -182,6 +182,7 @@ classdef PumpTherapy < InfusionController
             this.opt.corrBolusRules(1).glucoseThresh = 15.0;
             this.opt.corrBolusRules(1).dGlucoseThresh = 0.0;
             this.opt.temporalBasal = struct('time', [], 'type', [], 'value', [], 'duration', []);
+            this.opt.manualBolus = struct('time', [], 'type', [], 'value', []);
             this.opt.bolusCalculatorError = struct('time', [], 'value', []);
             
             if exist('options', 'var')
@@ -393,6 +394,19 @@ classdef PumpTherapy < InfusionController
                         if corrBolus > 0
                             infusions.bolusInsulin = round(2*corrBolus, 1) / 2;
                         end
+                    end
+                end
+            end
+            
+            if ~isempty(this.opt.manualBolus.time)
+                idx = find(this.opt.manualBolus.time == time);
+                if ~isempty(idx)
+                    switch lower(this.opt.manualBolus.type{idx})
+                        case 'percent'
+                            infusions.bolusInsulin = infusions.bolusInsulin * this.opt.manualBolus.value(idx);
+                        case 'amount'
+                        otherwise
+                            infusions.bolusInsulin = this.opt.manualBolus.value(idx);
                     end
                 end
             end
