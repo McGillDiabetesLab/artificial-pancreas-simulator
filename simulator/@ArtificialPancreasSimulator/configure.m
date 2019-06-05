@@ -161,21 +161,7 @@ if iscell(this.options.resultsManager) && numel(this.options.resultsManager) >= 
     this.resultsManagerOptions = this.options.resultsManager{2};
 end
 
-%% Configure parallel execution.
-if isempty(this.options.parallelExecution)
-    this.options.parallelExecution = false;
-end
-
-%% Configure progress bar.
-if isempty(this.options.progressBar)
-    this.options.progressBar = true;
-end
-
 %% Configure interactive simulation.
-if isempty(this.options.interactiveSimulation)
-    this.options.interactiveSimulation = false;
-end
-
 if this.options.interactiveSimulation
     this.simulationTime = this.options.simulationStartTime;
     

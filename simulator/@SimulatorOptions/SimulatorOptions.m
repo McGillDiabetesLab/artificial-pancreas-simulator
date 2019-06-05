@@ -9,30 +9,30 @@ classdef SimulatorOptions
         %SIMULATIONSTARTTIME  Simulation start time.
         %   The time of the day in minutes at which to start the
         %   simulation.
-        simulationStartTime;
+        simulationStartTime = 8 * 60;
         
         %SIMULATIONDURATION  Simulation duration.
         %   The duration of the simulation in minutes.
-        simulationDuration;
+        simulationDuration = 24 * 60;
         
         %SIMULATIONSTEPSIZE  Simulation step size.
         %   The time between simulation steps in minutes.
-        simulationStepSize;
+        simulationStepSize = 10;
         
         %PARALLELEXECUTION  Parallel execution flag (optional).
         %   An optional flag that turns on parallel execution. If set, the
         %   program will simulate multiple patients in parallel. Defaults
         %   to false.
-        parallelExecution;
+        parallelExecution = false;
         
         %PROGRESSBAR  progree bar flag (optional).
         %   An optional flag that turns on the progree bar.
-        progressBar;
+        progressBar = true;
         
         %INTERACTIVESIMULATION  Interactive simulation flag (optional).
         %   An optional flag that turns on interactive simulation. Defaults
         %   to false.
-        interactiveSimulation;
+        interactiveSimulation = false;
         
         %VIRTUALPATIENTS  Virtual patients configuration.
         %   A cell array defining the virtual population to use in the
@@ -117,7 +117,45 @@ classdef SimulatorOptions
     end
     
     methods (Static)
-        function options = getOptions(name)
+        function out = getVirtualPatients()
+            out = SimulatorOptions.getObjects('virtual-patients');
+        end
+        
+        function out = getInfusionControllers()
+            out = SimulatorOptions.getObjects('controllers');
+        end
+        
+        function out = getMealPlans()
+            out = SimulatorOptions.getObjects('meal-plans');
+        end
+        
+        function out = getExercisePlans()
+            out = SimulatorOptions.getObjects('exercise-plans');
+        end
+        
+        function out = getResultsManagers()
+            out = SimulatorOptions.getObjects('results-managers');
+        end
+        
+        function classes = getObjects(directoryName)
+            classes = {};
+            paths = strsplit(path, ';');
+            for i = 1:numel(paths)
+                directory = dir(strcat(paths{i}, filesep, directoryName));
+                for index = 1:numel(directory)
+                    filename = directory(index).name;
+                    startIndex = regexp(filename, '^@.*$');
+                    if startIndex == 1
+                        classes{end+1, 1} = extractAfter(filename, 1);
+                    end
+                end
+            end
+        end
+        
+        function options = getOptions(classname)
+            %GETOPTIONS  Get list of default options for a simulator
+            %   classname.
+            
             options = struct();
             
             dummyOpt = SimulatorOptions;
@@ -126,9 +164,9 @@ classdef SimulatorOptions
             dummyOpt.simulationStepSize = 10; % minutes
             dummyOpt.resultsManager = 'ResultsManagerTemplate';
             
-            if contains(which(name), 'patient', 'IgnoreCase', true)
+            if contains(which(classname), 'patient', 'IgnoreCase', true)
                 dummyOpt.virtualPatients{1} = { ...
-                    name, ...
+                    classname, ...
                     'MealPlanTemplate', ...
                     'ExercisePlanTemplate', ...
                     'InfusionControllerTemplate'};
@@ -136,32 +174,32 @@ classdef SimulatorOptions
                 if isprop(dummySim.patients{1}, 'opt')
                     options = dummySim.patients{1}.opt;
                 end
-            elseif contains(which(name), 'mealplan', 'IgnoreCase', true)
+            elseif contains(which(classname), 'mealplan', 'IgnoreCase', true)
                 dummyOpt.virtualPatients{1} = { ...
                     'VirtualPatientTemplate', ...
-                    name, ...
+                    classname, ...
                     'ExercisePlanTemplate', ...
                     'InfusionControllerTemplate'};
                 dummySim = ArtificialPancreasSimulator(dummyOpt);
                 if isprop(dummySim.patients{1}.mealPlan, 'opt')
                     options = dummySim.patients{1}.mealPlan.opt;
                 end
-            elseif contains(which(name), 'exercise', 'IgnoreCase', true)
+            elseif contains(which(classname), 'exercise', 'IgnoreCase', true)
                 dummyOpt.virtualPatients{1} = { ...
                     'VirtualPatientTemplate', ...
                     'MealPlanTemplate', ...
-                    name, ...
+                    classname, ...
                     'InfusionControllerTemplate'};
                 dummySim = ArtificialPancreasSimulator(dummyOpt);
                 if isprop(dummySim.patients{1}.exercisePlan, 'opt')
                     options = dummySim.patients{1}.exercisePlan.opt;
                 end
-            elseif contains(which(name), 'controller', 'IgnoreCase', true)
+            elseif contains(which(classname), 'controller', 'IgnoreCase', true)
                 dummyOpt.virtualPatients{1} = { ...
                     'VirtualPatientTemplate', ...
                     'MealPlanTemplate', ...
                     'ExercisePlanTemplate', ...
-                    name};
+                    classname};
                 dummySim = ArtificialPancreasSimulator(dummyOpt);
                 if isprop(dummySim.primaryControllers{1}, 'opt')
                     options = dummySim.primaryControllers{1}.opt;
