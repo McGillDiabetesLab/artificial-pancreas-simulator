@@ -519,7 +519,7 @@ classdef HovorkaPatient < VirtualPatient
         end
     end
     
-    methods (Access = private)
+    methods (Access = protected)
         function processTreatmentLogic(this, t)
             if this.opt.useTreatments
                 meals_ = this.mealPlan.getMeal(max(t-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:t+20);
