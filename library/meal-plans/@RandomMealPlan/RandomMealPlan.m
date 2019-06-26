@@ -162,7 +162,7 @@ classdef RandomMealPlan < MealPlan
             end
             
             if this.opt.RNGSeed > 0
-                rng(options.RNGSeed);
+                rng(mod(this.simulationStartTime*this.opt.RNGSeed, 999983));
             end
             
             % Compute number of steps.
