@@ -58,6 +58,17 @@ classdef InfusionController < matlab.mixin.Copyable
     end
     
     methods(Static)
+        function val = unitsStandard()
+            %UNITSSTANDARD  Unit Standard can be either us or uk.
+            %   This flag set the unit standard used by this class. The value
+            %   of unit standard can be either 'US' or 'UK' (case
+            %   non-sensitive). The default value is UK. Each simulator
+            %   instance should set the unitsStandard correctly. The simulator
+            %   will automatically convert glucose values between each instant
+            %   using the value in unitsStandard.
+            val = 'uk';
+        end
+        
         function options = configure(className, lastOptions)
             %CONFIGURE  Input dialog box for configuring the class.
             %   OPTIONS = CONFIGURE(CLASSNAME, LASTOPTIONS) returns a

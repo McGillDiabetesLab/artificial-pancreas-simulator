@@ -90,7 +90,15 @@ resultsManager = this.resultsManagers{patientIndex};
 time = this.options.simulationStartTime;
 
 glucoseMeasurement = patient.getGlucoseMeasurement();
-resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
+if contains(patient.unitsStandard, 'uk', 'IgnoreCase', true) && ...
+        contains(resultsManager.unitsStandard, 'us', 'IgnoreCase', true)
+    resultsManager.addGlucoseMeasurement(time, glucoseMeasurement*18.018);
+elseif contains(patient.unitsStandard, 'us', 'IgnoreCase', true) && ...
+        contains(resultsManager.unitsStandard, 'uk', 'IgnoreCase', true)
+    resultsManager.addGlucoseMeasurement(time, glucoseMeasurement/18.018);
+else
+    resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
+end
 
 tracerInfo = patient.getTracerInfo();
 resultsManager.addTracerMeasurement(time, tracerInfo);
@@ -113,8 +121,15 @@ while time < this.options.simulationStartTime + this.options.simulationDuration
     end
     
     glucoseMeasurement = patient.getGlucoseMeasurement();
-    resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
-    
+    if contains(patient.unitsStandard, 'uk', 'IgnoreCase', true) && ...
+            contains(resultsManager.unitsStandard, 'us', 'IgnoreCase', true)
+        resultsManager.addGlucoseMeasurement(time, glucoseMeasurement*18.018);
+    elseif contains(patient.unitsStandard, 'us', 'IgnoreCase', true) && ...
+            contains(resultsManager.unitsStandard, 'uk', 'IgnoreCase', true)
+        resultsManager.addGlucoseMeasurement(time, glucoseMeasurement/18.018);
+    else
+        resultsManager.addGlucoseMeasurement(time, glucoseMeasurement);
+    end
     tracerInfo = patient.getTracerInfo();
     resultsManager.addTracerMeasurement(time, tracerInfo);
 end
