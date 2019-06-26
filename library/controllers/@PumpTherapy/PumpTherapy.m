@@ -38,12 +38,12 @@ classdef PumpTherapy < InfusionController
             else
                 f = fields(lastOptions);
                 for i = 1:numel(f)
-                    if strcmp(f{i}, 'corrBolusRules')
-                        for k = 1:numel(lastOptions.corrBolusRules)
+                    if strcmp(f{i}, 'autoBolusRules')
+                        for k = 1:numel(lastOptions.autoBolusRules)
                             defaultAns.corrBolusTable(k, :) = { ...
-                                lastOptions.corrBolusRules(k).name, ...
-                                num2str(lastOptions.corrBolusRules(k).glucoseThresh), ...
-                                num2str(lastOptions.corrBolusRules(k).dGlucoseThresh)};
+                                lastOptions.autoBolusRules(k).name, ...
+                                num2str(lastOptions.autoBolusRules(k).glucoseThresh), ...
+                                num2str(lastOptions.autoBolusRules(k).dGlucoseThresh)};
                         end
                     else
                         defaultAns.(f{i}) = lastOptions.(f{i});
@@ -141,15 +141,15 @@ classdef PumpTherapy < InfusionController
                 f = fields(answer);
                 for i = 1:numel(f)
                     if strcmp(f{i}, 'corrBolusTable')
-                        options.corrBolusRules = struct();
+                        options.autoBolusRules = struct();
                         for j = 1:size(answer.corrBolusTable, 1)
                             if (~isempty(answer.corrBolusTable{j, 2}))
-                                options.corrBolusRules(j).name = answer.corrBolusTable{j, 1};
-                                options.corrBolusRules(j).glucoseThresh = str2double(answer.corrBolusTable{j, 2});
+                                options.autoBolusRules(j).name = answer.corrBolusTable{j, 1};
+                                options.autoBolusRules(j).glucoseThresh = str2double(answer.corrBolusTable{j, 2});
                                 if (~isempty(answer.corrBolusTable{j, 3}))
-                                    options.corrBolusRules(j).dGlucoseThresh = str2double(answer.corrBolusTable{j, 3});
+                                    options.autoBolusRules(j).dGlucoseThresh = str2double(answer.corrBolusTable{j, 3});
                                 else
-                                    options.corrBolusRules(j).dGlucoseThresh = 0.0;
+                                    options.autoBolusRules(j).dGlucoseThresh = 0.0;
                                 end
                             end
                         end
@@ -170,17 +170,20 @@ classdef PumpTherapy < InfusionController
             this.opt.name = this.name;
             this.opt.targetGlucose = 6.5;
             this.opt.useFixedISF = false;
+            this.opt.useMeanBasal = false;
+            this.opt.useMeanCarbF = false;
             this.opt.insulinSensitivity = 2.5;
             this.opt.insulinDuration = 3.5 * 60;
             this.opt.insulinPeakTime = 75;
             this.opt.mealBolus = true;
+            this.opt.correctionBolus = true;
             this.opt.hypoPumpShutoff = false;
             this.opt.dGlucosePumpShutoffThresh = 0.05;
-            this.opt.correctionBolus = true;
-            this.opt.corrBolusRules = struct([]);
-            this.opt.corrBolusRules(1).name = 'Default';
-            this.opt.corrBolusRules(1).glucoseThresh = 15.0;
-            this.opt.corrBolusRules(1).dGlucoseThresh = 0.0;
+            this.opt.autoBolus = false;
+            this.opt.autoBolusRules = struct([]);
+            this.opt.autoBolusRules(1).name = 'Default';
+            this.opt.autoBolusRules(1).glucoseThresh = 15.0;
+            this.opt.autoBolusRules(1).dGlucoseThresh = 0.0;
             this.opt.temporalBasal = struct('time', [], 'type', [], 'value', [], 'duration', []);
             this.opt.manualBolus = struct('time', [], 'type', [], 'value', []);
             this.opt.bolusCalculatorError = struct('time', [], 'value', []);
@@ -288,12 +291,16 @@ classdef PumpTherapy < InfusionController
             
             % Compute basal.
             if isfield(prop, 'pumpBasals')
-                pumpBasals = prop.pumpBasals.value;
-                idx = find(prop.pumpBasals.time <= mod(time, 24*60), 1, 'last');
-                if ~isempty(idx)
-                    Ub = pumpBasals(idx);
+                if this.opt.useMeanBasal
+                    Ub = mean(prop.pumpBasals.value);
                 else
-                    Ub = pumpBasals(end);
+                    pumpBasals = prop.pumpBasals.value;
+                    idx = find(prop.pumpBasals.time <= mod(time, 24*60), 1, 'last');
+                    if ~isempty(idx)
+                        Ub = pumpBasals(idx);
+                    else
+                        Ub = pumpBasals(end);
+                    end
                 end
             else % Use a default basal.
                 Ub = 1.0; % U/h.
@@ -349,11 +356,15 @@ classdef PumpTherapy < InfusionController
                 meal = this.patient.getMeal(time);
                 if meal.value > 0
                     if isfield(prop, 'carbFactors')
-                        idx = find(prop.carbFactors.time <= mod(time, 24*60), 1, 'last');
-                        if ~isempty(idx)
-                            carbFactor = prop.carbFactors.value(idx);
+                        if this.opt.useMeanCarbF
+                            carbFactor = mean(prop.carbFactors.value);
                         else
-                            carbFactor = prop.carbFactors.value(end);
+                            idx = find(prop.carbFactors.time <= mod(time, 24*60), 1, 'last');
+                            if ~isempty(idx)
+                                carbFactor = prop.carbFactors.value(idx);
+                            else
+                                carbFactor = prop.carbFactors.value(end);
+                            end
                         end
                     else
                         carbFactor = 12;
@@ -376,18 +387,18 @@ classdef PumpTherapy < InfusionController
                 end
             end
             
-            % Calculate correction bolus in case no meal bolus is given.
+            % Calculate an automatic correction bolus in case no meal bolus is given.
             if ~this.opt.mealBolus || meal.value == 0
-                if this.opt.correctionBolus && ...
+                if this.opt.autoBolus && ...
                         time - this.lastBolusTime > 1.5 * 60
-                    correctionBolusConditions = false;
-                    for k = 1:length(this.opt.corrBolusRules)
-                        correctionBolusConditions = correctionBolusConditions || ...
-                            (glucose >= this.opt.corrBolusRules(k).glucoseThresh && ...
-                            this.dGlucoseHistory(:, end) >= this.opt.corrBolusRules(k).dGlucoseThresh);
+                    autoBolusConditions = false;
+                    for k = 1:length(this.opt.autoBolusRules)
+                        autoBolusConditions = autoBolusConditions || ...
+                            (glucose >= this.opt.autoBolusRules(k).glucoseThresh && ...
+                            this.dGlucoseHistory(:, end) >= this.opt.autoBolusRules(k).dGlucoseThresh);
                     end
                     
-                    if correctionBolusConditions
+                    if autoBolusConditions
                         corrBolus = (glucose - targetGlucose) / ISF - ...
                             insulinOnBoard;
                         
