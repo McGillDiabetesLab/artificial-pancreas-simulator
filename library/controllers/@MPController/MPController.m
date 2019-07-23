@@ -38,6 +38,8 @@ classdef MPController < InfusionController
     end
     
     properties(GetAccess = public, SetAccess = protected)
+        opt;
+        
         U; % History of control actions.
         ULast; % Last control action (U: [basal insulin, bolus insulin, meal]).
         UULast; % Last predicted control action vector for basal insulin.
@@ -106,23 +108,22 @@ classdef MPController < InfusionController
             this@InfusionController(simulationStartTime, simulationDuration, simulationStepSize, patient);
             
             % Parse options.
-            opt = struct();
-            opt.name = this.name;
-            opt.gain = 1.0;
-            opt.debugInfo = false;
+            this.opt.name = this.name;
+            this.opt.gain = 1.0;
+            this.opt.debugInfo = false;
             
             if exist('options', 'var')
-                f = fields(opt);
+                f = fields(this.opt);
                 for i = 1:numel(f)
                     if isfield(options, f{i})
-                        opt.(f{i}) = options.(f{i});
+                        this.opt.(f{i}) = options.(f{i});
                     end
                 end
             end
             
-            this.name = opt.name;
-            this.mpcParam.factor = opt.gain;
-            this.debug = opt.debugInfo;
+            this.name = this.opt.name;
+            this.mpcParam.factor = this.opt.gain;
+            this.debug = this.opt.debugInfo;
             
             % Initialize counter.
             this.counter = 0;
