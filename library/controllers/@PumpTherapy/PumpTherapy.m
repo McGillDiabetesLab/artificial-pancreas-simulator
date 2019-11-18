@@ -371,10 +371,10 @@ classdef PumpTherapy < InfusionController
                     end
                     
                     if this.opt.correctionBolus
-                        correctionBolus = (glucose - targetGlucose) / ISF;
+                        correctionBolus = (glucose - targetGlucose) / ISF - ...
+                            insulinOnBoard;
                         infusions.bolusInsulin = round(2*( ...
-                            meal.value / carbFactor - ...
-                            insulinOnBoard + ...
+                            meal.value / carbFactor + ...
                             max(correctionBolus, 0)), 1) / 2;
                     else
                         infusions.bolusInsulin = round(2*( ...
@@ -416,6 +416,7 @@ classdef PumpTherapy < InfusionController
                         case 'percent'
                             infusions.bolusInsulin = infusions.bolusInsulin * this.opt.manualBolus.value(idx);
                         case 'amount'
+                            infusions.bolusInsulin = this.opt.manualBolus.value(idx);
                         otherwise
                             infusions.bolusInsulin = this.opt.manualBolus.value(idx);
                     end
