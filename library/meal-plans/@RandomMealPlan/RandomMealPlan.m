@@ -181,10 +181,11 @@ classdef RandomMealPlan < MealPlan
             else
                 days = 1:numOfDays;
             end
+            numOfTry = 1e3;
             for day = days
                 totalCarbs = -1;
                 iter = 0;
-                while iter < 100 && (totalCarbs < this.opt.dailyCarbsMin || totalCarbs > this.opt.dailyCarbsMax)
+                while iter < numOfTry && (totalCarbs < this.opt.dailyCarbsMin || totalCarbs > this.opt.dailyCarbsMax)
                     iter = iter + 1;
                     totalCarbs = 0;
                     meals_ = this.meals;
@@ -197,17 +198,19 @@ classdef RandomMealPlan < MealPlan
                                 Index = floor(simulationStartTime/simulationStepSize) + 1;
                             end
                             meals_.values(Index) = round(this.opt.plan.(mealNames{mnIdx}).value(1)+diff(this.opt.plan.(mealNames{mnIdx}).value)*rand(1));
+                            
                             if meals_.values(Index) < 5 % do not count meals less than 5g
                                 meals_.values(Index) = 0;
                             end
+                            
                             meals_.glycemicLoads(Index) = this.opt.plan.(mealNames{mnIdx}).glycemicLoad;
                             meals_.announced(Index) = this.opt.plan.(mealNames{mnIdx}).announcedFraction > rand(1);
                             totalCarbs = totalCarbs + meals_.values(Index);
                         end
                     end
                 end
-                if iter == 100
-                    warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%d, %d] g.', dailyCarbsMin, dailyCarbsMax);
+                if iter == numOfTry
+                    warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%d, %d] g.', this.opt.dailyCarbsMin, this.opt.dailyCarbsMax);
                 end
                 this.meals = meals_;
             end
