@@ -181,7 +181,7 @@ classdef RandomMealPlan < MealPlan
             else
                 days = 1:numOfDays;
             end
-            numOfTry = 1e3;
+            numOfTry = 1e4;
             for day = days
                 totalCarbs = -1;
                 iter = 0;
