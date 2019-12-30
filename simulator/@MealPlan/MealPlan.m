@@ -80,6 +80,17 @@ classdef MealPlan < matlab.mixin.Copyable
             end
             options = configureName(className, lastOptions);
         end
+        
+         function out = typesOfMeal
+            %TYPESOFMEAL
+            % List acceptable type of meal
+            out = {...
+                'normal', ... % a normal meal with a bolus
+                'unannounced', ... % a normal meal without a bolus
+                'snack', ... % a small meal without a bolus
+                'treats'  % a treatement
+                };
+        end
     end
     
     methods(Abstract)
@@ -95,6 +106,14 @@ classdef MealPlan < matlab.mixin.Copyable
         %           * Low GL: 10 or less
         %           * Medium GL: 11 to 19
         %           * High GL: 20 or more
+        %
+        %       protein - The amount of proteins in the meal (g).
+        %
+        %       fat - The amount of fat in the meal (g).
+        %
+        %       type - The type of the meal. Meal types can be accessed by
+        %       MealPlan.typesOfMeal
+        %
         meal = getMeal(this, time);
     end
     

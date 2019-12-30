@@ -106,6 +106,7 @@ classdef MDITherapy < InfusionController
             this.opt.insulinSensitivity = 2.5;
             this.opt.mealBolus = true;
             this.opt.correctionBolus = true;
+            this.opt.corrBolusGlucoseThresh = 18.0;
             
             if exist('options', 'var')
                 f = fields(this.opt);
@@ -203,6 +204,19 @@ classdef MDITherapy < InfusionController
                     
                     if infusions.bolusInsulin < 0
                         infusions.bolusInsulin = 0.0;
+                    end
+                end
+                
+                % Calculate an automatic correction bolus in case no meal bolus is given.
+                if ~this.opt.mealBolus || meal.value == 0
+                    if time - this.lastBolusTime > 1.5 * 60
+                        if this.opt.corrBolusGlucoseThresh > 0.0 && glucose > this.opt.corrBolusGlucoseThresh
+                            corrBolus = (glucose - targetGlucose) / ISF;
+                            
+                            if corrBolus > 0
+                                infusions.bolusInsulin = round(2*corrBolus, 1) / 2;
+                            end
+                        end
                     end
                 end
             end

@@ -22,7 +22,7 @@ classdef PumpTherapy < InfusionController
         function options = configure(className, lastOptions)
             
             defaultAns = struct();
-            defaultAns.corrBolusTable = cell(20, 3);
+            defaultAns.autoBolusRules = cell(20, 3);
             if ~exist('lastOptions', 'var')
                 defaultAns.name = className;
                 defaultAns.targetGlucose = 6.5;
@@ -34,13 +34,13 @@ classdef PumpTherapy < InfusionController
                 defaultAns.hypoPumpShutoff = false;
                 defaultAns.dGlucosePumpShutoffThresh = 0.03;
                 defaultAns.correctionBolus = true;
-                defaultAns.corrBolusTable(1, :) = {'Default', '15.0', '0.0'};
+                defaultAns.autoBolusRules(1, :) = {'Default', '15.0', '0.0'};
             else
                 f = fields(lastOptions);
                 for i = 1:numel(f)
                     if strcmp(f{i}, 'autoBolusRules')
                         for k = 1:numel(lastOptions.autoBolusRules)
-                            defaultAns.corrBolusTable(k, :) = { ...
+                            defaultAns.autoBolusRules(k, :) = { ...
                                 lastOptions.autoBolusRules(k).name, ...
                                 num2str(lastOptions.autoBolusRules(k).glucoseThresh), ...
                                 num2str(lastOptions.autoBolusRules(k).dGlucoseThresh)};
@@ -123,7 +123,7 @@ classdef PumpTherapy < InfusionController
             formats(end, 1).callback = @toggleOptionValue;
             formats(end, 1).size = 100;
             
-            prompt(end+1, :) = {'', 'corrBolusTable', ''};
+            prompt(end+1, :) = {'', 'autoBolusRules', ''};
             formats(end, 2).type = 'table';
             formats(end, 2).format = {'char', 'char', 'char'};
             formats(end, 2).items = {'Rule name', 'Glucose thresh (mmol/L)', 'Glucose ROC thresh (mmol/(L min))'};
@@ -140,14 +140,14 @@ classdef PumpTherapy < InfusionController
             if ~cancelled
                 f = fields(answer);
                 for i = 1:numel(f)
-                    if strcmp(f{i}, 'corrBolusTable')
+                    if strcmp(f{i}, 'autoBolusRules')
                         options.autoBolusRules = struct();
-                        for j = 1:size(answer.corrBolusTable, 1)
-                            if (~isempty(answer.corrBolusTable{j, 2}))
-                                options.autoBolusRules(j).name = answer.corrBolusTable{j, 1};
-                                options.autoBolusRules(j).glucoseThresh = str2double(answer.corrBolusTable{j, 2});
-                                if (~isempty(answer.corrBolusTable{j, 3}))
-                                    options.autoBolusRules(j).dGlucoseThresh = str2double(answer.corrBolusTable{j, 3});
+                        for j = 1:size(answer.autoBolusRules, 1)
+                            if (~isempty(answer.autoBolusRules{j, 2}))
+                                options.autoBolusRules(j).name = answer.autoBolusRules{j, 1};
+                                options.autoBolusRules(j).glucoseThresh = str2double(answer.autoBolusRules{j, 2});
+                                if (~isempty(answer.autoBolusRules{j, 3}))
+                                    options.autoBolusRules(j).dGlucoseThresh = str2double(answer.autoBolusRules{j, 3});
                                 else
                                     options.autoBolusRules(j).dGlucoseThresh = 0.0;
                                 end
