@@ -107,11 +107,19 @@ classdef DailyMealPlan < MealPlan
             % Use sparse matrices for efficient storage.
             this.meals.values = sparse(numSteps, 1);
             this.meals.glycemicLoads = sparse(numSteps, 1);
+            this.meals.protein = sparse(numSteps, 1);
+            this.meals.fat = sparse(numSteps, 1);
             this.meals.announced = sparse(numSteps, 1);
             
             % Fill meals from meal table.
             for i = 1:numel(this.opt.meals)
-                index = floor(this.opt.meals(i).time/this.simulationStepSize) + 1;
+                if ischar(this.opt.meals(i).time)
+                    mealTime = eval(this.opt.meals(i).time);
+                else
+                    mealTime = this.opt.meals(i).time;
+                end
+                
+                index = floor(mealTime/this.simulationStepSize) + 1;
                 
                 this.meals.values(index) = this.opt.meals(i).value;
                 this.meals.glycemicLoads(index) = this.opt.meals(i).glycemicLoad;
@@ -119,23 +127,25 @@ classdef DailyMealPlan < MealPlan
                 
                 if this.opt.meals(i).repeat
                     day = 1;
-                    index = floor((this.opt.meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                    index = floor((mealTime + day * 24 * 60)/this.simulationStepSize) + 1;
                     while index <= numSteps
                         this.meals.values(index) = this.opt.meals(i).value;
                         this.meals.glycemicLoads(index) = this.opt.meals(i).glycemicLoad;
                         this.meals.announced(index) = this.opt.meals(i).announcedFraction > rand(1);
                         day = day + 1;
-                        index = floor((this.opt.meals(i).time + day * 24 * 60)/this.simulationStepSize) + 1;
+                        index = floor((mealTime + day * 24 * 60)/this.simulationStepSize) + 1;
                     end
                 end
             end
         end
         
         function meal = getMeal(this, time)
-            index = round(time/this.simulationStepSize) + 1;
+            index = floor(time/this.simulationStepSize) + 1;
             
             meal.value = this.meals.values(index);
             meal.glycemicLoad = this.meals.glycemicLoads(index);
+            meal.protein = this.meals.protein(index);
+            meal.fat = this.meals.fat(index);
             meal.announced = this.meals.announced(index);
         end
     end

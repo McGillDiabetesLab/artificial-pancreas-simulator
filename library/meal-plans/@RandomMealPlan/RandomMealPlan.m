@@ -181,7 +181,7 @@ classdef RandomMealPlan < MealPlan
             else
                 days = 1:numOfDays;
             end
-            numOfTry = 1e4;
+            numOfTry = 1e5;
             for day = days
                 totalCarbs = -1;
                 iter = 0;
@@ -191,7 +191,7 @@ classdef RandomMealPlan < MealPlan
                     meals_ = this.meals;
                     for mnIdx = 1:numel(mealNames)
                         if this.opt.plan.(mealNames{mnIdx}).enabled
-                            Index = round(((day - 1) * 24 * 60 + this.opt.plan.(mealNames{mnIdx}).time(1) + diff(this.opt.plan.(mealNames{mnIdx}).time) * rand(1))/this.simulationStepSize) + 1;
+                            Index = floor(((day - 1) * 24 * 60 + this.opt.plan.(mealNames{mnIdx}).time(1) + diff(this.opt.plan.(mealNames{mnIdx}).time) * rand(1))/this.simulationStepSize) + 1;
                             if simulationStartTime >= this.opt.plan.(mealNames{mnIdx}).time(1) && ...
                                     simulationStartTime <= this.opt.plan.(mealNames{mnIdx}).time(end) && ...
                                     Index < floor(simulationStartTime/simulationStepSize) + 1
@@ -229,7 +229,7 @@ classdef RandomMealPlan < MealPlan
         end
         
         function meal = getMeal(this, time)
-            index = round(time/this.simulationStepSize) + 1;
+            index = floor(time/this.simulationStepSize) + 1;
             
             meal.value = this.meals.values(index);
             meal.glycemicLoad = this.meals.glycemicLoads(index);
