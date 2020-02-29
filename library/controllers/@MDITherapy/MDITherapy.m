@@ -1,3 +1,4 @@
+
 classdef MDITherapy < InfusionController
     %MDITHERAPY Open loop therapy with multiple daily injections.
     
@@ -195,7 +196,7 @@ classdef MDITherapy < InfusionController
                     if this.opt.correctionBolus
                         % No correction bolus if a bolus was delivred in
                         % the last 3.5h.
-                        if time - this.bolusHistory.time(end) < 3.5*60
+                        if this.bolusHistory.index > 0 && time - this.bolusHistory.time(end) < 3.5*60
                             correctionBolus = 0.0;
                         else
                             correctionBolus = (glucose - targetGlucose) / ISF;
