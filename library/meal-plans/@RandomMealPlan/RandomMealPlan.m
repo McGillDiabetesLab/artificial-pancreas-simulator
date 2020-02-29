@@ -210,7 +210,7 @@ classdef RandomMealPlan < MealPlan
                     end
                 end
                 if iter == numOfTry
-                    warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%d, %d] g.', this.opt.dailyCarbsMin, this.opt.dailyCarbsMax);
+                    warning('[RandomMealPlan] Couldn''t generate random meals with max and min carbs: [%6.2f, %6.2f] g.', this.opt.dailyCarbsMin, this.opt.dailyCarbsMax);
                 end
                 this.meals = meals_;
             end
