@@ -107,7 +107,7 @@ classdef MDITherapy < InfusionController
             this.opt.insulinSensitivity = 2.5;
             this.opt.mealBolus = true;
             this.opt.correctionBolus = true;
-            this.opt.corrBolusGlucoseThresh = 18.0;
+            this.opt.corrBolusGlucoseThresh = 16.0;
             this.opt.basalDoseTime = 7*60;
             
             if exist('options', 'var')
