@@ -11,7 +11,8 @@ options.parallelExecution = true;
 options.resultsManager = {'PublishResultsManager', struct('summary', true)};
 
 % Define a structure holding options for HovorkaPatient
-optPatient.patient = {'patient0'};
+optPatient = options.getOptions('HovorkaPatient');
+optPatient.patient = {'patientAvg'};
 optPatient.intraVariability = 0.1;
 optPatient.mealVariability = 0.5;
 optPatient.sensorNoiseType = 'AR(1)';
@@ -22,6 +23,7 @@ optPatient.wrongPumpParam = true;
 optPatient.randomInitialConditions = true;
 
 % Define a structure holding options for RandomMealPlan
+optMeal = options.getOptions('RandomMealPlan');
 optMeal.name = 'myRandomMeals';
 optMeal.dailyCarbsMax = 240;
 optMeal.dailyCarbsMin = 180;
