@@ -13,6 +13,7 @@ this.param.w = 74.9; % Patient weight (kg).
 
 % Sensor submodel.
 this.param.TauS = exp(2.372); % Time constant between interstitial and plasma glucose compartment (min).
+
 % Glucose submodel.
 this.param.EGP0 = 16.9; % Endogenous glucose production extrapolated to zero insulin concentration (umol / (kg min)).
 this.param.F01 = 11.1; % Noninsulin-dependent glucose flux (umol / (kg min)).

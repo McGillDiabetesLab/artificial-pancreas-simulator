@@ -39,6 +39,7 @@ classdef HovorkaPatient < VirtualPatient
         
         meals;
         glucagon;
+        exercises;
         CGM; % Recalibrated and synchronized sensor error.
         variability; % Intra-patient variability.
         propertiesError;
@@ -190,14 +191,21 @@ classdef HovorkaPatient < VirtualPatient
             this.opt.intraVariability = 0.0;
             this.opt.mealVariability = 0.0;
             this.opt.basalGlucose = 6.5;
-            this.opt.initialGlucose = 6.5;
-            this.opt.initialInsulinOnBoard = 0.0;
+            this.opt.randomInitialConditions = false;
+            this.opt.initialGlucose = NaN;
+            this.opt.initialInsulinOnBoard = NaN;
             this.opt.initialState = [];
             this.opt.useTreatments = true;
+            this.opt.treatmentRules = struct([]); % Treatement is given by default when
+            this.opt.treatmentRules(1).sensorGlucose = 3.9; % the sensor glucose is less than 3.9
+            this.opt.treatmentRules(1).bloodGlucose = 2.8; % the plasma glucose is less than 2.8
+            this.opt.treatmentRules(1).duration = 15; % for 15 minutes
+            this.opt.treatmentRules(1).lastTreatment = 40; % and the last treatement was given 40 min ago
             this.opt.wrongPumpParam = false;
             this.opt.pumpBasalsError = struct('time', [], 'value', []);
             this.opt.carbFactorsError = struct('time', [], 'value', []);
             this.opt.carbsCountingError = false;
+            this.opt.carbsCountingErrorValue = struct('bias', [], 'std', []);
             this.opt.dailyCarbsCountingError = struct('time', [], 'value', []);
             this.opt.RNGSeed = -1;
             
@@ -271,7 +279,29 @@ classdef HovorkaPatient < VirtualPatient
                 this.param.TGlu = lognrnd(log(0.0012), 0.2); % Glucagon sensitivity (mL/pg).
                 this.param.MCRGlu = lognrnd(log(0.012), 0.2); % Metabolic clearance rate of glucagon (L/kg/min).
             end
-
+            
+            % Set initialGlucose and initialInsulinOnBoard
+            if this.opt.randomInitialConditions
+                this.opt.initialGlucose = this.param.GBasal * (1 + 2.0 * randn(1));
+                while this.opt.initialGlucose < 4 || this.opt.initialGlucose > 12
+                    this.opt.initialGlucose = this.param.GBasal * (1 + 2.0 * randn(1));
+                end
+                
+                this.opt.initialInsulinOnBoard = 0.1 * this.param.TDD * (rand(1) - 0.5);
+                while this.opt.initialInsulinOnBoard < -0.8 * this.param.Ub
+                    this.opt.initialInsulinOnBoard = 0.1 * this.param.TDD * (rand(1) - 0.5);
+                end
+                
+                %TODO add initialCarbsOnBoard
+            else
+                if isnan(this.opt.initialGlucose)
+                    this.opt.initialGlucose = this.param.GBasal;
+                end
+                if isnan(this.opt.initialInsulinOnBoard)
+                    this.opt.initialInsulinOnBoard = 0.0;
+                end
+            end
+            
             % Set patient parameters.
             this.param.carbFactors.value = this.param.carbF;
             this.param.carbFactors.time = 0;
@@ -303,17 +333,19 @@ classdef HovorkaPatient < VirtualPatient
             this.glucagon = struct([]);
             
             % Initialize intra-variability parameters.
-            this.variability.EGP0.val = this.param.EGP0;
-            this.variability.F01.val = this.param.F01;
-            this.variability.k12.val = this.param.k12;
-            this.variability.ka1.val = this.param.ka1;
-            this.variability.ka2.val = this.param.ka2;
-            this.variability.ka3.val = this.param.ka3;
-            this.variability.St.val = this.param.St;
-            this.variability.Sd.val = this.param.Sd;
-            this.variability.Se.val = this.param.Se;
-            this.variability.ka.val = this.param.ka;
-            this.variability.ke.val = this.param.ke;
+            for fn = {'val', 'target'}
+                this.variability.EGP0.(fn{1}) = this.param.EGP0;
+                this.variability.F01.(fn{1}) = this.param.F01;
+                this.variability.k12.(fn{1}) = this.param.k12;
+                this.variability.ka1.(fn{1}) = this.param.ka1;
+                this.variability.ka2.(fn{1}) = this.param.ka2;
+                this.variability.ka3.(fn{1}) = this.param.ka3;
+                this.variability.St.(fn{1}) = this.param.St;
+                this.variability.Sd.(fn{1}) = this.param.Sd;
+                this.variability.Se.(fn{1}) = this.param.Se;
+                this.variability.ka.(fn{1}) = this.param.ka;
+                this.variability.ke.(fn{1}) = this.param.ke;
+            end
             
             % Set scaling for states.
             this.stateScale = [; ...
@@ -333,8 +365,6 @@ classdef HovorkaPatient < VirtualPatient
         
         function prop = getProperties(this)
             prop = this.param;
-            
-            % Note that TDD update is removed. TODO put it back.
             
             if isfield(this.propertiesError, 'pumpBasals') && ~isempty(this.propertiesError.pumpBasals.time)
                 prop.pumpBasals.time = this.propertiesError.pumpBasals.time;
@@ -373,7 +403,7 @@ classdef HovorkaPatient < VirtualPatient
                 Ugbolus = max(infusions.bolusGlucagon, 0);
             end
             
-            if rem(startTime, 24*60) == this.simulationStartTime || this.firstIteration
+            if this.firstIteration || rem(abs(startTime-this.simulationStartTime), 24*60) < this.simulationStepSize
                 
                 % Add intra-variability.
                 if this.opt.intraVariability > 0
@@ -424,6 +454,15 @@ classdef HovorkaPatient < VirtualPatient
             if Ugbolus ~= 0
                 this.glucagon(end+1).value = Ugbolus;
                 this.glucagon(end).time = startTime;
+            end
+            
+            % Add exercise
+            exercise = this.exercisePlan.getExercise(startTime);
+            if exercise.duration ~= 0
+                this.exercises(end+1).time = startTime;
+                this.exercises(end).duration = exercise.duration;
+                this.exercises(end).intensity = exercise.intensity;
+                this.exercises(end).type = exercise.type;
             end
             
             % Apply intra-variability.
@@ -505,28 +544,103 @@ classdef HovorkaPatient < VirtualPatient
     methods (Access = protected)
         function processTreatmentLogic(this, t)
             if this.opt.useTreatments
-                meals_ = this.mealPlan.getMeal(max(t-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:t+20);
-                treats_ = this.mealPlan.getTreatment(max(t-30, this.mealPlan.simulationStartTime):this.mealPlan.simulationStepSize:t);
-                if sum(meals_.value) + sum(treats_) < 15 % if patient had or planing to have a meal
-                    hypoThreshold = 2.8; % mmol/L.
-                    prolongedHypoThreshold = 3.3; % mmol/L.
-                    prolongedHypoDuration = floor(60/this.mealPlan.simulationStepSize) + 1; % index
-                    if all(this.stateHistory(this.eGluPlas, end-prolongedHypoDuration:end)/this.param.Vg < prolongedHypoThreshold)
-                        this.addTreatment(t, 30);
-                    elseif all(this.stateHistory(this.eGluPlas, end-1:end)/this.param.Vg < hypoThreshold)
-                        this.addTreatment(t, 15);
+                if sum(this.mealPlan.getMeal(max(t-20, this.simulationStartTime):this.simulationStepSize:t).value) > 0
+                    return
+                end
+                for k = 1:length(this.opt.treatmentRules)
+                    % Indepentely of rules if prevTreats in last 2 hours is
+                    % large hold of.
+                    prevTreats = sum(this.mealPlan.getTreatment(max(t-2*60, this.simulationStartTime):this.simulationStepSize:t));
+                    if prevTreats > 75
+                        continue;
+                    end
+                    
+                    % set rules
+                    lastTreatment = 40; % minutes
+                    if isfield(this.opt.treatmentRules(k), 'lastTreatment') && ~isempty(this.opt.treatmentRules(k).lastTreatment)
+                        lastTreatment = this.opt.treatmentRules(k).lastTreatment;
+                    end
+                                        
+                    steps = 15 / this.simulationStepSize;
+                    if isfield(this.opt.treatmentRules(k), 'duration') && ~isempty(this.opt.treatmentRules(k).duration)
+                        steps = this.opt.treatmentRules(k).duration / this.simulationStepSize;
+                    end
+                    steps = floor(max(steps, 1));
+                    treat = 15;
+                    if isfield(this.opt.treatmentRules(k), 'treat') && ~isempty(this.opt.treatmentRules(k).treat)
+                        treat = this.opt.treatmentRules(k).treat;
+                    end
+                    sensorGlucoseThresh = inf;
+                    if isfield(this.opt.treatmentRules(k), 'sensorGlucose') && ~isempty(this.opt.treatmentRules(k).sensorGlucose)
+                        sensorGlucoseThresh = this.opt.treatmentRules(k).sensorGlucose;
+                    end
+                    bloodGlucoseThresh = inf;
+                    if isfield(this.opt.treatmentRules(k), 'bloodGlucose') && ~isempty(this.opt.treatmentRules(k).bloodGlucose)
+                        bloodGlucoseThresh = this.opt.treatmentRules(k).bloodGlucose;
+                    end
+                    
+                    % check rules
+                    if all(this.stateHistory(this.eGluMeas, end-steps+1:end) < sensorGlucoseThresh) && ...
+                            all(this.stateHistory(this.eGluPlas, end-steps+1:end)/this.param.Vg < bloodGlucoseThresh)
+                        treats_ = this.mealPlan.getTreatment(max(t-lastTreatment, this.simulationStartTime):this.simulationStepSize:t);
+                        if sum(treats_) < 10
+                            treat_ = max(10, min(75, round(treat*(1 + prevTreats/15)*(1 + 0.2 * randn(1)))));
+                            this.addTreatment(t, treat_);
+                        end
                     end
                 end
             end
         end
         
         function applyIntraVariability(this, t)
-            alp = 0.7; % Filter parameter changes.
-            
             for fn = fieldnames(this.variability)'
                 if isstruct(this.variability.(fn{1}))
-                    target = this.param.(fn{1}) * (1 + 0.1 * sin(2*pi*(t + this.variability.(fn{1}).phase)/(this.variability.(fn{1}).period)));
-                    this.variability.(fn{1}).val = (1 - alp) * this.variability.(fn{1}).val + alp * target;
+                    this.variability.(fn{1}).target = this.param.(fn{1});
+                end
+            end
+            
+            if this.opt.intraVariability > 0
+                for fn = fieldnames(this.variability)'
+                    if isstruct(this.variability.(fn{1}))
+                        this.variability.(fn{1}).target = this.param.(fn{1}) * (1 + 0.2 * this.opt.intraVariability * sin(2*pi*(t + this.variability.(fn{1}).phase)/(this.variability.(fn{1}).period)));
+                    end
+                end
+            end
+            
+            exercInt = 0;
+            exercType = 'aerobic';
+            for e = 1:length(this.exercises)
+                if this.exercises(e).time <= t && t < this.exercises(e).time + this.exercises(e).duration
+                    exercInt = this.exercises(e).intensity;
+                    exercType = ExercisePlan.typesOfExercise{this.exercises(e).type};
+                end
+            end
+            if exercInt > 0
+                this.variability.ka.target = this.param.ka * (1 + 2 * exercInt);
+                this.variability.ka1.target = this.param.ka1 * (1 + 4 * exercInt);
+                this.variability.ka2.target = this.param.ka2 * (1 + 4 * exercInt);
+                this.variability.ka3.target = this.param.ka3 * (1 + 4 * exercInt);
+                if strcmp(exercType, 'mixed')
+                    mixingEffect = -0.7 + (0.7 + 0.7) * rand(1);
+                    mixingCoeff = [1 + mixingEffect, 1 - mixingEffect];
+                else
+                    mixingCoeff = ones(1, 2);
+                end
+                if strcmp(exercType, 'aerobic') || strcmp(exercType, 'mixed')
+                    this.variability.St.target = this.param.St * (1 + 5 * mixingCoeff(1) * exercInt);
+                    this.variability.Sd.target = this.param.Sd * (1 + 10 * mixingCoeff(1) * exercInt);
+                end
+                if strcmp(exercType, 'anaerobic') || strcmp(exercType, 'mixed')
+                    this.variability.EGP0.target = this.param.EGP0 * (1 + 1 * mixingCoeff(2) * exercInt);
+                    this.variability.Se.target = this.param.Se / (1 + 6 * mixingCoeff(2) * exercInt);
+                end
+            end
+            
+            % Parameter changes are filtered
+            alp = 0.7;
+            for fn = fieldnames(this.variability)'
+                if isstruct(this.variability.(fn{1}))
+                    this.variability.(fn{1}).val = (1 - alp) * this.variability.(fn{1}).val + alp * this.variability.(fn{1}).target;
                 end
             end
         end
@@ -564,10 +678,19 @@ classdef HovorkaPatient < VirtualPatient
                         end
                     end
                 else % Choose random carb counting erros
+                    CCErrStd = this.opt.carbsCountingError;
+                    CCErrBias = 0.0;
+                    if ~isempty(this.opt.carbsCountingErrorValue.std)
+                        CCErrStd = this.opt.carbsCountingErrorValue.std;
+                    end
+                    if ~isempty(this.opt.carbsCountingErrorValue.bias)
+                        CCErrBias = this.opt.carbsCountingErrorValue.bias;
+                    end
+                    
                     dailyCarbsCountingError_.time = unique(floor(time/(4 * 60))) * (4 * 60);
-                    dailyCarbsCountingErrorValue = this.opt.carbsCountingError * (rand(length(unique(mod(dailyCarbsCountingError_.time, 1440))), 1) - 0.5);
+                    dailyCarbsCountingErrorValue = CCErrBias + CCErrStd * (rand(length(unique(mod(dailyCarbsCountingError_.time, 1440))), 1) - 0.5);
                     dailyCarbsCountingErrorValue = dailyCarbsCountingErrorValue(mod(dailyCarbsCountingError_.time, 1440)/(4 * 60)+1);
-                    dailyCarbsCountingError_.value = dailyCarbsCountingErrorValue .* (1 + 0.4 * randn(size(dailyCarbsCountingErrorValue)));
+                    dailyCarbsCountingError_.value = dailyCarbsCountingErrorValue .* (1 + 0.3 * randn(size(dailyCarbsCountingErrorValue)));
                     
                     for n = 1:length(time)
                         idx = find(dailyCarbsCountingError_.time <= time(n), 1, 'last');
