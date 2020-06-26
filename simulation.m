@@ -12,6 +12,7 @@ options.parallelExecution = false;
 options.resultsManager = 'PublishResultsManager';
 
 optPatient = options.getOptions('HovorkaPatient');
+optPatient.patient = {'patientOriginal'};
 optPatient.sensorNoiseType = 'ar(1)';
 optPatient.intraVariability = 0.6;
 optPatient.mealVariability = 0.4;
