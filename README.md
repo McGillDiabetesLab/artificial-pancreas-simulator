@@ -2,6 +2,14 @@
 
 A simulation environment for artificial pancreas type 1 diabetes treatments.
 
+**Table of contents**
+- [Overview](#overview)
+- [Structure](#structure)
+- [Usage](#usage)
+- [Additional Resources](#additional-ressources)
+- [Credits](#credits)
+- [Contact and Issues](#contact-and-issues)
+
 ## Overview
 
 A quick introduction to this simulator can be found [here](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/docs/Artificial%20Pancreas%20Simulator.pdf)
@@ -21,7 +29,7 @@ The infusion controller defines the algorithm used to control the administration
 
 The results manager defines how the results should be accumulated during the simulation and how the results should be presented to the user after the simulation has completed. It is embodied by the [`ResultsManager`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40ResultsManager/ResultsManager.m) class.
 
-## Code Structure
+## Structure
 
 This repository is structured as follows
 
