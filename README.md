@@ -4,6 +4,8 @@ A simulation environment for artificial pancreas type 1 diabetes treatments.
 
 ## Overview
 
+A quick introduction to this simulator can be found [here](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/docs/Artificial%20Pancreas%20Simulator.pdf)
+
 The simulator is divided into three components: the virtual patient, the infusion controller and the results manager. Each component can be configured by the user to customize the simulation.
 
 #### Virtual Patient
@@ -19,7 +21,7 @@ The infusion controller defines the algorithm used to control the administration
 
 The results manager defines how the results should be accumulated during the simulation and how the results should be presented to the user after the simulation has completed. It is embodied by the [`ResultsManager`](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/simulator/%40ResultsManager/ResultsManager.m) class.
 
-## Structure
+## Code Structure
 
 This repository is structured as follows
 
@@ -35,6 +37,7 @@ This repository is structured as follows
     ├── templates
     ├── docs
     └── ...
+
 ### Simulator
 
 The core implementation of the simulator is here. The simulator provides the back-end framework which handles communication between libraries, real-time simulation, and GUI. Each component of the simulator is well documented, and documentation can be accessed by:
@@ -67,13 +70,13 @@ guiSimulation
 
 As a result the following GUI should show.
 
-![](docs/GUIPic.png)
+![](docs/GUI.png)
 
 The GUI is composed of two parts **Configuration** and **Simulation**. In configuration, it is possible to reconfigure each component. In simulation, you can select the desired configuration to simulate.
 
 For a quick start run **Start**. In the configuration section, it is possible to create different flavors of the same module with different options. By default, we create 2 instances of **HovorkaPatient** one called **HovorkaPatient_AvgNoNoise** and the other **HovorkaPatient_AvgWithVar**. These represents 2 different configurations of the same **HovorkaPatient** module.
 
-By default, the simulator look at all folder classes defined in [getLibraryPaths](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/getLibraryPaths.m). It is possible to modify **getLibraryPaths** to add your custom path, more on this here [Adding User Functions](docs/Adding-User-Functions.md).
+By default, the simulator searches for all folder classes defined in [getLibraryPaths](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/getLibraryPaths.m). It is possible to modify **getLibraryPaths** to add your custom path, more on this here [Adding User Functions](docs/Adding-User-Functions.md).
 
 ### Scripts
 
@@ -109,7 +112,7 @@ options.virtualPatients = {{ ...
 
 In this example, we want to run a 24h simulation, starting at 8am, with a step size of 10 min. The simulation will use `HovorkaPatient` for the virtual patient simulation, the meals that will be consumed by this patient are described in `DailyMealPlan`, the patient will not exercise `EmptyExercisePlan`, and the patient will use a standard insulin pump for his insulin treatment `PumpTherapy`.
 
-Observe how `options.virtualPatients` is a double cell using `{{`, `}}`. This is done since the `virtualPatients` option support multiple patient definition, see `example/multiPatientSim.m` for an example.
+Observe how `options.virtualPatients` is a double cell using `{{`, `}}`. This is done since the `virtualPatients` option support multiple patient definition, more on this here [Multiple Patient Simulation](docs/Multiple-Patient-Simulation.md).
 
 We need to specify the format in which the results should be done, we do this by:
 
@@ -124,11 +127,38 @@ simulator = ArtificialPancreasSimulator(options);
 simulator.simulate();
 ```
 
-This procedure is implemented in `example\inlineSim.m`.
-
 ### Example of expected result
 
-![](docs/inlineSim.png)
+![](docs/Simulation.png)
+
+### Modules options
+
+Each module (a folder class, example [PumpTherapy](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/library/controllers/%40PumpTherapy/PumpTherapy.m)) implementes options specific to the modeule. To view all availaible options run:
+
+```Matlab
+SimulatorOptions.getOptions('PumpTherapy');
+```
+
+To modify an option:
+
+```Matlab
+optPump = SimulatorOptions.getOptions('PumpTherapy');
+optPump.correctionBolus = false;
+```
+
+These options will show in the GUI by double clicking on the configuration (example **HovorkaPatient_AvgNoNoise**). They can be used in a script by passing them in **options.virtualPatients**, for example: 
+
+```Matlab
+options.virtualPatients = {{ ...
+    'HovorkaPatient', ...
+    'DailyMealPlan', ...
+    'EmptyExercisePlan', ...
+    {'PumpTherapy', optPump}}};
+```
+
+It is hard to document each feature/option existing in each module. However, the name of the option should be a good indicator of what the option will be doing. Also, it is hard to understand what the option is doing without going and checking how it is coded. I guess options are for advanced users. Adding new features is encouraged.
+
+An example of options use can be found here `example\detailedSim.m`.
 
 ## Additional Resources
 
@@ -143,6 +173,7 @@ This simulator was designed by the team in [McGill Artificial Pancreas Lab](http
 - [Andrei Purcarus](https://github.com/Gripnook): Implemented the simulator backbone code.
 - [Anas El Fathi](https://github.com/anaselfathi): Implemented library modules, and provides long-term support.
 - Prof. Ahmad Haidar: Provided overall supervision and feedback.
+- A list of all contributors is [here](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/graphs/contributors).
 
 A schalary paper about the simulator is in-progress, meanwhile, if you find this simulator usefull please feel free to cite our review paper describing BergmanPatient and MPController.
 

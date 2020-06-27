@@ -1,4 +1,4 @@
-%INLINESIM  Example of the artificial pancreas simulator command line.
+%% Example of the artificial pancreas simulator command line.
 
 clc,
 clear,
