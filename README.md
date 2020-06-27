@@ -62,7 +62,7 @@ This folder contains additional documentation.
 The user interface can be used by running:
 
 ```Matlab
-simulation
+guiSimulation
 ```
 
 As a result the following GUI should show.
@@ -71,10 +71,19 @@ As a result the following GUI should show.
 
 The GUI is composed of two parts **Configuration** and **Simulation**. In configuration, it is possible to reconfigure each component. In simulation, you can select the desired configuration to simulate.
 
-### Inline Functions
+For a quick start run **Start**. In the configuration section, it is possible to create different flavors of the same module with different options. By default, we create 2 instances of **HovorkaPatient** one called **HovorkaPatient_AvgNoNoise** and the other **HovorkaPatient_AvgWithVar**. These represents 2 different configurations of the same **HovorkaPatient** module.
 
-Start a new m-File, this file can be in any folder.  
-The first thing we need to do is to configure the path to include the _artificial pancreas simulator_. For this, we write:
+By default, the simulator look at all folder classes defined in [getLibraryPaths](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/blob/master/getLibraryPaths.m). It is possible to modify **getLibraryPaths** to add your custom path, more on this here [Adding User Functions](docs/Adding-User-Functions.md).
+
+### Scripts
+
+A sample simulation can be excuted by running:
+
+```Matlab
+simulation
+```
+
+This simulator can be used as a library from anywhere in your local repository. For this you need to configure the path to include the _artificial pancreas simulator_. For this, we write:
 ```Matlab
 run('[YOUR PATH]/artificial-pancreas-simulator/configurePaths');
 ```
@@ -122,10 +131,25 @@ This procedure is implemented in `example\inlineSim.m`.
 ![](docs/inlineSim.png)
 
 ## Additional Resources
-- [Software Requirements Specification](docs/Software-Requirements-Specification.md)
-- [TODO: Multiple Patient Simulation](docs/Multiple-Patient-Simulation.md)
-- [TODO: Adding User Functions](docs/Adding-User-Functions.md)
-- [TODO: HovorkaPatient Detailed](docs/HovorkaPatient-Detailed.md)
 
-## Contact
+- [Software Requirements Specification](docs/Software-Requirements-Specification.md)
+- [Detailed Script Simulation](docs/Detailed-Script-Simulation.md)
+- [Multiple Patient Simulation](docs/Multiple-Patient-Simulation.md)
+- [Adding User Functions](docs/Adding-User-Functions.md)
+
+## Credits
+
+This simulator was designed by the team in [McGill Artificial Pancreas Lab](https://www.mcgill.ca/haidar/), mainly:
+- [Andrei Purcarus](https://github.com/Gripnook): Implemented the simulator backbone code.
+- [Anas El Fathi](https://github.com/anaselfathi): Implemented library modules, and provides long-term support.
+- Prof. Ahmad Haidar: Provided overall supervision and feedback.
+
+A schalary paper about the simulator is in-progress, meanwhile, if you find this simulator usefull please feel free to cite our review paper describing BergmanPatient and MPController.
+
+```
+A. El Fathi, M. Raef Smaoui, V. Gingras, B. Boulet and A. Haidar, "The Artificial Pancreas and Meal Control: An Overview of Postprandial Glucose Regulation in Type 1 Diabetes," in IEEE Control Systems Magazine, vol. 38, no. 1, pp. 67-85, Feb. 2018, doi: 10.1109/MCS.2017.2766323.
+```
+
+## Contact and Issues
+
 For additional assistance, please use [GitHub Issues](https://github.com/McGillDiabetesLab/artificial-pancreas-simulator/issues).
