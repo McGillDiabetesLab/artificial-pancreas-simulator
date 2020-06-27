@@ -6,7 +6,7 @@ A simulation environment for artificial pancreas type 1 diabetes treatments.
 - [Overview](#overview)
 - [Structure](#structure)
 - [Usage](#usage)
-- [Additional Resources](#additional-ressources)
+- [Additional Resources](#additional-resources)
 - [Credits](#credits)
 - [Contact and Issues](#contact-and-issues)
 
